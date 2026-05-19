@@ -136,3 +136,4 @@ data/
 
 # Local settings overrides
 .claude/settings.local.json
+.github/
