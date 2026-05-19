@@ -1,12 +1,12 @@
 {
-  "name": "@siteboon/claude-code-ui",
+  "name": "@stewartjohn0/helix-ui",
   "version": "1.23.0",
-  "description": "A web-based UI for Claude Code CLI",
+  "description": "A sci-fi web UI for AI coding agents — Claude Code, Cursor, Codex, Gemini, and custom providers",
   "type": "module",
   "main": "server/index.js",
   "bin": {
-    "claude-code-ui": "server/cli.js",
-    "cloudcli": "server/cli.js"
+    "helix-ui": "server/cli.js",
+    "helixui": "server/cli.js"
   },
   "files": [
     "server/",
@@ -15,13 +15,13 @@
     "scripts/",
     "README.md"
   ],
-  "homepage": "https://cloudcli.ai",
+  "homepage": "https://github.com/StewartJohn0/helixui",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/siteboon/claudecodeui.git"
+    "url": "git+https://github.com/StewartJohn0/helixui.git"
   },
   "bugs": {
-    "url": "https://github.com/siteboon/claudecodeui/issues"
+    "url": "https://github.com/StewartJohn0/helixui/issues"
   },
   "scripts": {
     "dev": "concurrently --kill-others \"npm run server\" \"npm run client\"",
@@ -40,10 +40,15 @@
     "ai",
     "anthropic",
     "ui",
-    "mobile"
+    "mobile",
+    "helix",
+    "sci-fi",
+    "custom providers",
+    "deepseek",
+    "openai-compatible"
   ],
-  "author": "CloudCLI UI Contributors",
-  "license": "GPL-3.0",
+  "author": "Stewart John",
+  "license": "AGPL-3.0-or-later",
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.111",
     "@codemirror/lang-css": "^6.3.1",
