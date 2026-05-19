@@ -12,9 +12,11 @@ tailwind.config.js
 
 # Database files
 authdb/
-*.db
-*.sqlite
-*.sqlite3
+server/database/auth.db
+server/database/app.db
+**/*.db
+**/*.sqlite
+**/*.sqlite3
 
 
 # IDE and editor files
