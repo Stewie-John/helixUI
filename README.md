@@ -21,24 +21,34 @@ It gives you a full-featured, visually immersive interface accessible from any d
 ## Screenshots
 
 <div align="center">
+
+### Full Desktop Interface — DNA Helix Background · HUD System Monitor · Multi-session Sidebar
+<img src="public/screenshots/chat-interface.png" alt="HelixUI Desktop — sci-fi chat interface with DNA helix background and HUD overlay" width="860">
+
+<br><br>
+
 <table>
 <tr>
 <td align="center">
-<h3>Desktop</h3>
-<img src="public/screenshots/desktop-main.png" alt="Desktop Interface" width="420">
+<h3>HUD System Monitor</h3>
+<img src="public/screenshots/hud-status.png" alt="HUD system monitor showing RAM, CPU, GPU, VRAM gauges" width="380">
+<p><em>Real-time RAM · CPU · GPU · VRAM gauges</em></p>
 </td>
 <td align="center">
-<h3>Mobile</h3>
-<img src="public/screenshots/mobile-chat.png" alt="Mobile Interface" width="220">
+<h3>Mobile Interface</h3>
+<img src="public/screenshots/mobile-chat.png" alt="Mobile interface with DNA helix and bottom nav" width="200">
+<p><em>Responsive · Touch-native · PWA</em></p>
 </td>
 </tr>
 <tr>
 <td align="center" colspan="2">
-<h3>Agent Selection</h3>
-<img src="public/screenshots/cli-selection.png" alt="CLI Selection" width="420">
+<h3>Integrated Shell Terminal</h3>
+<img src="public/screenshots/terminal.png" alt="Integrated PTY shell terminal" width="680">
+<p><em>Full PTY terminal with reconnect & buffer replay</em></p>
 </td>
 </tr>
 </table>
+
 </div>
 
 ## Features
