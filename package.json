@@ -1,5 +1,5 @@
 {
-  "name": "@stewartjohn0/helix-ui",
+  "name": "@stewiejohn/helix-ui",
   "version": "1.23.0",
   "description": "A sci-fi web UI for AI coding agents — Claude Code, Cursor, Codex, Gemini, and custom providers",
   "type": "module",

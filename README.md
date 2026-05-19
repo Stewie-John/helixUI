@@ -69,7 +69,7 @@ It gives you a full-featured, visually immersive interface accessible from any d
 ### Run without installing
 
 ```bash
-npx @stewartjohn0/helix-ui
+npx @stewiejohn/helix-ui
 ```
 
 Opens at `http://localhost:3001`.
@@ -77,7 +77,7 @@ Opens at `http://localhost:3001`.
 ### Global install
 
 ```bash
-npm install -g @stewartjohn0/helix-ui
+npm install -g @stewiejohn/helix-ui
 helix-ui
 ```
 
