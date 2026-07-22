@@ -45,6 +45,7 @@
     "start": "npm run build && npm run server",
     "release": "./scripts/release.mjs",
     "release:dry": "./scripts/release.mjs --dry-run",
+    "publish:source": "npm run release:check && git push --set-upstream origin main --follow-tags",
     "prepublishOnly": "npm run build",
     "postinstall": "node scripts/fix-node-pty.js"
   },
