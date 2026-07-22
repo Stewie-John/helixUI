@@ -10,6 +10,13 @@ import './i18n/config.js'
 
 removeStaleBundleRecoveryQuery()
 
+// Safari can restore a fully executed, obsolete app from its back-forward cache.
+// A persisted restore must revalidate index.html so it cannot keep running a
+// bundle that has been removed by a newer deployment.
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted) window.location.reload()
+})
+
 // The HTTP-to-HTTPS handoff carries only the existing login token in a URL
 // fragment. Consume and erase it before AuthContext reads localStorage.
 if (window.location.hash.startsWith('#ccui-auth=')) {

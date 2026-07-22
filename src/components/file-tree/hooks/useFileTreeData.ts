@@ -61,6 +61,7 @@ export function useFileTreeData(selectedProject: Project | null): UseFileTreeDat
   const [refreshKey, setRefreshKey] = useState(0);
   const [loadingDirs, setLoadingDirs] = useState<Set<string>>(new Set());
   const abortControllerRef = useRef<AbortController | null>(null);
+  const loadedProjectRef = useRef<string | null>(null);
 
   const refreshFiles = useCallback(() => {
     setRefreshKey((prev) => prev + 1);
@@ -111,9 +112,16 @@ export function useFileTreeData(selectedProject: Project | null): UseFileTreeDat
     const projectName = selectedProject?.name;
 
     if (!projectName) {
+      loadedProjectRef.current = null;
       setFiles([]);
       setLoading(false);
       return;
+    }
+
+    const isInitialProjectLoad = loadedProjectRef.current !== projectName;
+    if (isInitialProjectLoad) {
+      setFiles([]);
+      setLoading(true);
     }
 
     // Abort previous request
@@ -126,16 +134,13 @@ export function useFileTreeData(selectedProject: Project | null): UseFileTreeDat
     let isActive = true;
 
     const fetchFiles = async () => {
-      if (isActive) {
-        setLoading(true);
-      }
       try {
         const response = await api.getFiles(projectName, { signal: abortControllerRef.current!.signal });
 
         if (!response.ok) {
           const errorText = await response.text();
           console.error('File fetch failed:', response.status, errorText);
-          if (isActive) {
+          if (isActive && isInitialProjectLoad) {
             setFiles([]);
           }
           return;
@@ -143,6 +148,7 @@ export function useFileTreeData(selectedProject: Project | null): UseFileTreeDat
 
         const data = (await response.json()) as FileTreeNode[];
         if (isActive) {
+          loadedProjectRef.current = projectName;
           setFiles((previous) => preserveLoadedSubtrees(data, previous));
         }
       } catch (error) {
@@ -152,7 +158,7 @@ export function useFileTreeData(selectedProject: Project | null): UseFileTreeDat
 
         console.error('Error fetching files:', error);
         if (isActive) {
-          setFiles([]);
+          if (isInitialProjectLoad) setFiles([]);
         }
       } finally {
         if (isActive) {
