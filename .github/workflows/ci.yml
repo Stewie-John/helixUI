@@ -21,5 +21,5 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci --ignore-scripts --include=dev
+      - run: npm ci --include=dev
       - run: npm run release:check
