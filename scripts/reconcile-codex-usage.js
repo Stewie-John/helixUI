@@ -14,7 +14,8 @@ const readArg = (name, fallback) => {
 const apply = args.has('--apply');
 const includeDetails = args.has('--details');
 const days = Math.max(1, Number.parseInt(readArg('--days', '7'), 10) || 7);
-const databasePath = process.env.DATABASE_PATH || path.join(os.homedir(), '.cloudcli', 'auth.db');
+const dataRoot = process.env.CLOUDCLI_DATA_DIR || path.join(os.homedir(), '.cloudcli');
+const databasePath = process.env.DATABASE_PATH || path.join(dataRoot, 'auth.db');
 const sessionsRoot = path.join(process.env.CODEX_HOME || path.join(os.homedir(), '.codex'), 'sessions');
 
 const shanghaiDay = (date) => new Intl.DateTimeFormat('en-CA', {

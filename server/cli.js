@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Claude Code UI CLI
+ * HelixUI CLI
  *
- * Provides command-line utilities for managing Claude Code UI
+ * Provides command-line utilities for managing HelixUI
  *
  * Commands:
  *   (no args)     - Start the server (default)
@@ -132,9 +132,9 @@ function showStatus() {
 
     console.log('\n' + c.dim('═'.repeat(60)));
     console.log(`\n${c.tip('[TIP]')} Hints:`);
-    console.log(`      ${c.dim('>')} Use ${c.bright('cloudcli --port 8080')} to run on a custom port`);
-    console.log(`      ${c.dim('>')} Use ${c.bright('cloudcli --database-path /path/to/db')} for custom database`);
-    console.log(`      ${c.dim('>')} Run ${c.bright('cloudcli help')} for all options`);
+    console.log(`      ${c.dim('>')} Use ${c.bright('helix-ui --port 8080')} to run on a custom port`);
+    console.log(`      ${c.dim('>')} Use ${c.bright('helix-ui --database-path /path/to/db')} for custom database`);
+    console.log(`      ${c.dim('>')} Run ${c.bright('helix-ui help')} for all options`);
     console.log(`      ${c.dim('>')} Access the UI at http://localhost:${process.env.PORT || '3001'}\n`);
 }
 
@@ -150,7 +150,7 @@ Usage:
   helixui [command] [options]
 
 Commands:
-  start          Start the Claude Code UI server (default)
+  start          Start the HelixUI server (default)
   status         Show configuration and data locations
   update         Update to the latest version
   help           Show this help information
@@ -163,11 +163,11 @@ Options:
   -v, --version               Show version information
 
 Examples:
-  $ cloudcli                        # Start with defaults
-  $ cloudcli --port 8080            # Start on port 8080
-  $ cloudcli -p 3000                # Short form for port
-  $ cloudcli start --port 4000      # Explicit start command
-  $ cloudcli status                 # Show configuration
+  $ helix-ui                        # Start with defaults
+  $ helix-ui --port 8080            # Start on port 8080
+  $ helix-ui -p 3000                # Short form for port
+  $ helix-ui start --port 4000      # Explicit start command
+  $ helix-ui status                 # Show configuration
 
 Environment Variables:
   PORT                Set server port (default: 3001)
@@ -208,7 +208,7 @@ async function checkForUpdates(silent = false) {
 
         if (isNewerVersion(latestVersion, currentVersion)) {
             console.log(`\n${c.warn('[UPDATE]')} New version available: ${c.bright(latestVersion)} (current: ${currentVersion})`);
-            console.log(`         Run ${c.bright('cloudcli update')} to update\n`);
+            console.log(`         Run ${c.bright('helix-ui update')} to update\n`);
             return { hasUpdate: true, latestVersion, currentVersion };
         } else if (!silent) {
             console.log(`${c.ok('[OK]')} You are on the latest version (${currentVersion})`);
@@ -237,7 +237,7 @@ async function updatePackage() {
 
         console.log(`${c.info('[INFO]')} Updating from ${currentVersion} to ${latestVersion}...`);
         execSync(`npm update -g ${packageJson.name}`, { stdio: 'inherit' });
-        console.log(`${c.ok('[OK]')} Update complete! Restart cloudcli to use the new version.`);
+        console.log(`${c.ok('[OK]')} Update complete! Restart helix-ui to use the new version.`);
     } catch (e) {
         console.error(`${c.error('[ERROR]')} Update failed: ${e.message}`);
         console.log(`${c.tip('[TIP]')} Try running manually: npm update -g ${packageJson.name}`);
@@ -246,10 +246,7 @@ async function updatePackage() {
 
 // Start the server
 async function startServer() {
-    // Check for updates silently on startup
-    checkForUpdates(true);
-
-    // Import and run the server
+    // Startup stays offline and deterministic. Use `helix-ui update` explicitly.
     await import('./index.js');
 }
 
@@ -316,7 +313,7 @@ async function main() {
             break;
         default:
             console.error(`\n❌ Unknown command: ${command}`);
-            console.log('   Run "cloudcli help" for usage information.\n');
+            console.log('   Run "helix-ui help" for usage information.\n');
             process.exit(1);
     }
 }

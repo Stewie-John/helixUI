@@ -13,9 +13,10 @@ from pathlib import Path
 
 
 SOURCE_ROOT = Path.home() / ".claude" / "projects"
-ARCHIVE_ROOT = Path.home() / ".cloudcli" / "claude-session-archive"
-TRASH_ROOT = Path.home() / ".cloudcli" / "claude-session-trash"
-CCUI_LOG = Path("/tmp/claudecodeui.log")
+DATA_ROOT = Path(os.environ.get("CLOUDCLI_DATA_DIR", Path.home() / ".cloudcli"))
+ARCHIVE_ROOT = DATA_ROOT / "claude-session-archive"
+TRASH_ROOT = DATA_ROOT / "claude-session-trash"
+CCUI_LOG = Path(os.environ.get("CLOUDCLI_LOG_FILE", DATA_ROOT / "server.log"))
 DELETE_LOG_OFFSET = ARCHIVE_ROOT / ".delete-log-offset"
 DELETE_PATTERN = re.compile(
     r"\[API\] Deleting session: ([0-9a-fA-F-]+) from project: ([A-Za-z0-9._-]+)"

@@ -72,8 +72,9 @@ import {
   foldersDb,
 } from './database/db.js';
 
-const CLAUDE_SESSION_ARCHIVE_ROOT = path.join(os.homedir(), '.cloudcli', 'claude-session-archive');
-const CLAUDE_SESSION_TRASH_ROOT = path.join(os.homedir(), '.cloudcli', 'claude-session-trash');
+const CLOUDCLI_DATA_ROOT = process.env.CLOUDCLI_DATA_DIR || path.join(os.homedir(), '.cloudcli');
+const CLAUDE_SESSION_ARCHIVE_ROOT = path.join(CLOUDCLI_DATA_ROOT, 'claude-session-archive');
+const CLAUDE_SESSION_TRASH_ROOT = path.join(CLOUDCLI_DATA_ROOT, 'claude-session-trash');
 
 function isHiddenRuntimeUserText(text) {
   const value = String(text || '').trim();
@@ -388,7 +389,7 @@ let _projectsInFlight = null;
 let _projectsCacheLoadPromise = null;
 let _projectsRefreshTimer = null;
 const PROJECTS_CACHE_TTL = 5 * 60 * 1000;
-const PROJECTS_CACHE_FILE = path.join(os.homedir(), '.cloudcli', 'projects-cache.json');
+const PROJECTS_CACHE_FILE = path.join(CLOUDCLI_DATA_ROOT, 'projects-cache.json');
 
 async function loadPersistedProjectsCache() {
   if (_projectsCache || _projectsCacheLoadPromise) return _projectsCacheLoadPromise;

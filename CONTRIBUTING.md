@@ -23,7 +23,7 @@ Thanks for contributing to HelixUI. Please read this guide before starting.
    ```
 3. Install dependencies:
    ```bash
-   npm ci
+   npm ci --include=dev
    ```
 4. Start the development server:
    ```bash
@@ -137,6 +137,8 @@ feat!: redesign settings page layout
 ## Releases
 
 Releases are managed by maintainers using [release-it](https://github.com/release-it/release-it) with the [conventional changelog plugin](https://github.com/release-it/conventional-changelog).
+
+Maintainers must run `npm run release:check` before creating a release.
 
 ```bash
 npm run release           # interactive (prompts for version bump)

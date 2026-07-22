@@ -4,7 +4,8 @@ import path from 'node:path';
 import readline from 'node:readline';
 import Database from 'better-sqlite3';
 
-const databasePath = process.env.DATABASE_PATH || path.join(os.homedir(), '.cloudcli', 'auth.db');
+const dataRoot = process.env.CLOUDCLI_DATA_DIR || path.join(os.homedir(), '.cloudcli');
+const databasePath = process.env.DATABASE_PATH || path.join(dataRoot, 'auth.db');
 const sessionsRoot = process.env.CODEX_SESSIONS_DIR
   || path.join(process.env.CODEX_HOME || path.join(os.homedir(), '.codex'), 'sessions');
 const db = new Database(databasePath);

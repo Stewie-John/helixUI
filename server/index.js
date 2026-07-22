@@ -2583,7 +2583,10 @@ wss.on('close', () => clearInterval(wsHeartbeatInterval));
 // JSONL logs. Live app-server events keep today's panel moving; this daily pass
 // repairs gaps caused by restarts and attributes subagent threads to the user
 // message that launched their root session.
-const codexUsageReconcileStatePath = path.join(os.homedir(), '.cloudcli', 'codex-usage-reconcile.json');
+const codexUsageReconcileStatePath = path.join(
+    process.env.CLOUDCLI_DATA_DIR || path.join(os.homedir(), '.cloudcli'),
+    'codex-usage-reconcile.json',
+);
 let codexUsageReconcileRunning = false;
 const runCodexUsageReconciliation = () => {
     if (codexUsageReconcileRunning) return;
@@ -4756,7 +4759,7 @@ async function startServer() {
             console.log(`${c.warn('[WARN]')} HTTPS disabled: certificate files not found in ${HTTPS_CERT_DIR}`);
         }
         console.log(`${c.info('[INFO]')} Installed at: ${c.dim(appInstallPath)}`);
-        console.log(`${c.tip('[TIP]')}  Run "cloudcli status" for full configuration details`);
+        console.log(`${c.tip('[TIP]')}  Run "helix-ui status" for full configuration details`);
         console.log('');
 
         await setupProjectsWatcher();
@@ -4789,7 +4792,7 @@ const beginGracefulRestart = (signal) => {
             isDrainingForRestart = true;
             clearChecks += 1;
             if (clearChecks >= 2) {
-                console.log('[SHUTDOWN] All model turns completed; restarting now.');
+                console.log('[SHUTDOWN] All model turns completed; shutting down now.');
                 process.exit(0);
             }
         } else {

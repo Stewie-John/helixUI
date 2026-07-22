@@ -42,6 +42,9 @@ npm run verify
 该命令会检查秘密与私有部署信息、运行稳定性和安全边界测试、TypeScript 类型检查
 以及生产构建。
 
+维护者发布前应运行更完整的 `npm run release:check`；它还会从 tarball 进行全新安装、
+启动服务验证数据目录隔离，并审计下载者实际获得的生产依赖。
+
 ## 发布与许可
 
 版本使用语义化 Git 标签和 GitHub Release 管理，流程见

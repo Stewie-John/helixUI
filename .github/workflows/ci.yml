@@ -22,6 +22,4 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --ignore-scripts --include=dev
-      - run: npm run verify
-      - name: Production dependency audit
-        run: npm audit --omit=dev --audit-level=high
+      - run: npm run release:check

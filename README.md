@@ -87,6 +87,9 @@ npm run verify
 
 `verify` scans for private deployment data and secrets, runs protocol and
 security tests, type-checks the frontend, and creates a production build.
+Maintainers use `npm run release:check`, which additionally installs the packed
+artifact in a clean home, starts it to verify runtime isolation, and audits the
+production dependency tree that consumers receive.
 
 ## Releases
 

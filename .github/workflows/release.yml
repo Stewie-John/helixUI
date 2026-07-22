@@ -26,7 +26,6 @@ jobs:
           cache: npm
           registry-url: https://registry.npmjs.org
       - run: npm ci --include=dev
-      - run: npm run verify
       - name: Create tag, GitHub release, and npm package
         run: npx release-it "${{ inputs.version }}" --ci
         env:

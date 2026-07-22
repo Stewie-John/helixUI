@@ -20,8 +20,10 @@ try {
       }
     }
   });
-} catch (e) {
-  console.log('No .env file found or error reading it:', e.message);
+} catch (error) {
+  if (error?.code !== 'ENOENT') {
+    console.warn('Could not read .env:', error.message);
+  }
 }
 
 const cloudCliDataDir = process.env.CLOUDCLI_DATA_DIR || path.join(os.homedir(), '.cloudcli');

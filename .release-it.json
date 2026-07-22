@@ -13,7 +13,7 @@
     "releaseName": "HelixUI v${version}"
   },
   "hooks": {
-    "before:init": ["npm run verify"]
+    "before:init": ["npm run release:check"]
   },
   "plugins": {
     "@release-it/conventional-changelog": {
