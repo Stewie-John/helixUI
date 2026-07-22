@@ -1,0 +1,353 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { MutableRefObject } from 'react';
+import type { FitAddon } from '@xterm/addon-fit';
+import type { Terminal } from '@xterm/xterm';
+import type { Project, ProjectSession } from '../../../types/app';
+import { SHELL_CONNECT_TIMEOUT_MS } from '../constants/constants';
+import { getShellWebSocketUrl, parseShellMessage, sendSocketMessage } from '../utils/socket';
+import { storeSelectedProvider } from '../../../utils/appEvents';
+
+const ANSI_ESCAPE_REGEX =
+  /(?:\u001B\[[0-?]*[ -/]*[@-~]|\u009B[0-?]*[ -/]*[@-~]|\u001B\][^\u0007\u001B]*(?:\u0007|\u001B\\)|\u009D[^\u0007\u009C]*(?:\u0007|\u009C)|\u001B[PX^_][^\u001B]*\u001B\\|[\u0090\u0098\u009E\u009F][^\u009C]*\u009C|\u001B[@-Z\\-_])/g;
+const PROCESS_EXIT_REGEX = /Process exited with code (\d+)/;
+
+type UseShellConnectionOptions = {
+  wsRef: MutableRefObject<WebSocket | null>;
+  terminalRef: MutableRefObject<Terminal | null>;
+  fitAddonRef: MutableRefObject<FitAddon | null>;
+  selectedProjectRef: MutableRefObject<Project | null | undefined>;
+  selectedSessionRef: MutableRefObject<ProjectSession | null | undefined>;
+  initialCommandRef: MutableRefObject<string | null | undefined>;
+  isPlainShellRef: MutableRefObject<boolean>;
+  onProcessCompleteRef: MutableRefObject<((exitCode: number) => void) | null | undefined>;
+  isInitialized: boolean;
+  autoConnect: boolean;
+  closeSocket: () => void;
+  clearTerminalScreen: () => void;
+  setAuthUrl: (nextAuthUrl: string) => void;
+  isUserScrollingShellRef: MutableRefObject<boolean>;
+};
+
+type UseShellConnectionResult = {
+  isConnected: boolean;
+  isConnecting: boolean;
+  closeSocket: () => void;
+  connectToShell: () => void;
+  disconnectFromShell: () => void;
+};
+
+export function useShellConnection({
+  wsRef,
+  terminalRef,
+  fitAddonRef,
+  selectedProjectRef,
+  selectedSessionRef,
+  initialCommandRef,
+  isPlainShellRef,
+  onProcessCompleteRef,
+  isInitialized,
+  autoConnect,
+  closeSocket,
+  clearTerminalScreen,
+  setAuthUrl,
+  isUserScrollingShellRef,
+}: UseShellConnectionOptions): UseShellConnectionResult {
+  const [isConnected, setIsConnected] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [reconnectTick, setReconnectTick] = useState(0);
+  const connectingRef = useRef(false);
+  // 心跳计时器
+  const pingIntervalRef = useRef<number | null>(null);
+  // 断连后自动重连延迟计时器
+  const reconnectTimeoutRef = useRef<number | null>(null);
+  const activeSocketRef = useRef<WebSocket | null>(null);
+  const unmountedRef = useRef(false);
+  const manualDisconnectRef = useRef(false);
+
+  const scheduleReconnect = useCallback(() => {
+    if (!autoConnect || manualDisconnectRef.current || unmountedRef.current) {
+      return;
+    }
+
+    if (reconnectTimeoutRef.current !== null) {
+      window.clearTimeout(reconnectTimeoutRef.current);
+    }
+
+    reconnectTimeoutRef.current = window.setTimeout(() => {
+      reconnectTimeoutRef.current = null;
+      setReconnectTick((value) => value + 1);
+    }, 1500);
+  }, [autoConnect]);
+
+  const handleProcessCompletion = useCallback(
+    (output: string) => {
+      if (!isPlainShellRef.current || !onProcessCompleteRef.current) {
+        return;
+      }
+
+      const sanitizedOutput = output.replace(ANSI_ESCAPE_REGEX, '');
+      const cleanOutput = sanitizedOutput;
+      if (cleanOutput.includes('Process exited with code 0')) {
+        onProcessCompleteRef.current(0);
+        return;
+      }
+
+      const match = cleanOutput.match(PROCESS_EXIT_REGEX);
+      if (!match) {
+        return;
+      }
+
+      const exitCode = Number.parseInt(match[1], 10);
+      if (!Number.isNaN(exitCode) && exitCode !== 0) {
+        onProcessCompleteRef.current(exitCode);
+      }
+    },
+    [isPlainShellRef, onProcessCompleteRef],
+  );
+
+  const handleSocketMessage = useCallback(
+    (rawPayload: string) => {
+      const message = parseShellMessage(rawPayload);
+      if (!message) {
+        console.error('[Shell] Error handling WebSocket message:', rawPayload);
+        return;
+      }
+
+      if (message.type === 'output') {
+        const output = typeof message.data === 'string' ? message.data : '';
+        handleProcessCompletion(output);
+        const terminal = terminalRef.current;
+        const shouldFollow = !isUserScrollingShellRef.current;
+        terminal?.write(output, () => {
+          if (shouldFollow && !isUserScrollingShellRef.current) terminal.scrollToBottom();
+        });
+        return;
+      }
+
+      // 服务端重连同步：将 Shell 的 provider 信息写入 localStorage，与 Chat 保持一致
+      if (message.type === 'session-sync') {
+        const syncProvider = typeof message.provider === 'string' ? message.provider : '';
+        if (syncProvider && syncProvider !== 'plain-shell') {
+          storeSelectedProvider(syncProvider);
+        }
+        return;
+      }
+
+      if (message.type === 'auth_url' || message.type === 'url_open') {
+        const nextAuthUrl = typeof message.url === 'string' ? message.url : '';
+        if (nextAuthUrl) {
+          setAuthUrl(nextAuthUrl);
+        }
+        return;
+      }
+
+      // 将服务端错误消息渲染到终端，方便用户排查问题
+      if (message.type === 'error') {
+        const errorText = typeof message.message === 'string' ? message.message : 'Unknown error';
+        terminalRef.current?.write(`\r\n\x1b[31m[Error] ${errorText}\x1b[0m\r\n`);
+      }
+    },
+    [handleProcessCompletion, isUserScrollingShellRef, setAuthUrl, terminalRef],
+  );
+
+  const connectWebSocket = useCallback(
+    (isConnectionLocked = false) => {
+      if ((connectingRef.current && !isConnectionLocked) || isConnecting || isConnected) {
+        return;
+      }
+
+      try {
+        const wsUrl = getShellWebSocketUrl();
+        if (!wsUrl) {
+          connectingRef.current = false;
+          setIsConnecting(false);
+          return;
+        }
+
+        connectingRef.current = true;
+
+        const socket = new WebSocket(wsUrl);
+        activeSocketRef.current = socket;
+        wsRef.current = socket;
+
+        // 连接超时保护：若 8 秒内未触发 onopen，则强制关闭并重置状态
+        const connectTimeoutId = window.setTimeout(() => {
+          if (activeSocketRef.current === socket && socket.readyState !== WebSocket.OPEN) {
+            console.warn('[Shell] WebSocket connection timeout, closing socket');
+            socket.close();
+            setIsConnected(false);
+            setIsConnecting(false);
+            connectingRef.current = false;
+          }
+        }, SHELL_CONNECT_TIMEOUT_MS);
+
+        socket.onopen = () => {
+          if (activeSocketRef.current !== socket || unmountedRef.current) {
+            try { socket.close(); } catch { /* ignore */ }
+            return;
+          }
+          window.clearTimeout(connectTimeoutId);
+          if (reconnectTimeoutRef.current !== null) {
+            window.clearTimeout(reconnectTimeoutRef.current);
+            reconnectTimeoutRef.current = null;
+          }
+          setIsConnected(true);
+          setIsConnecting(false);
+          connectingRef.current = false;
+          setAuthUrl('');
+
+          // 每 20s 发送 ping，防止代理/防火墙断开空闲连接
+          if (pingIntervalRef.current !== null) window.clearInterval(pingIntervalRef.current);
+          pingIntervalRef.current = window.setInterval(() => {
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify({ type: 'ping' }));
+            } else {
+              if (pingIntervalRef.current !== null) window.clearInterval(pingIntervalRef.current);
+            }
+          }, 20000);
+
+          // 等待 500ms：确保 WebGL 渲染器已完成字体度量，fit() 能得到正确列宽
+          // useShellTerminal 的 setIsInitialized 也在 100ms 后才触发，此处 500ms 足够
+          window.setTimeout(() => {
+            const currentTerminal = terminalRef.current;
+            const currentFitAddon = fitAddonRef.current;
+            const currentProject = selectedProjectRef.current;
+            if (!currentTerminal || !currentFitAddon || !currentProject) {
+              return;
+            }
+
+            currentFitAddon.fit();
+
+            sendSocketMessage(socket, {
+              type: 'init',
+              projectPath: currentProject.fullPath || currentProject.path || '',
+              // Plain terminals also carry the visible chat session ID. The
+              // backend uses it only as a durable PTY identity; hasSession stays
+              // false, so no model CLI resume behavior is enabled.
+              sessionId: selectedSessionRef.current?.id || null,
+              hasSession: isPlainShellRef.current ? false : Boolean(selectedSessionRef.current),
+              provider: isPlainShellRef.current ? 'plain-shell' : (selectedSessionRef.current?.__provider || localStorage.getItem('selected-provider') || 'claude'),
+              model: isPlainShellRef.current ? null : localStorage.getItem('codex-model'),
+              cols: currentTerminal.cols,
+              rows: currentTerminal.rows,
+              initialCommand: initialCommandRef.current,
+              isPlainShell: isPlainShellRef.current,
+            });
+
+            // 再等 500ms，二次 fit() + resize 双保险
+            window.setTimeout(() => {
+              const t = terminalRef.current;
+              const f = fitAddonRef.current;
+              if (!t || !f || socket.readyState !== WebSocket.OPEN) return;
+              f.fit();
+              if (!isUserScrollingShellRef.current) {
+                t.scrollToBottom();
+              }
+              sendSocketMessage(socket, { type: 'resize', cols: t.cols, rows: t.rows });
+            }, 500);
+          }, 500);
+        };
+
+        socket.onmessage = (event) => {
+          if (activeSocketRef.current !== socket || unmountedRef.current) return;
+          const rawPayload = typeof event.data === 'string' ? event.data : String(event.data ?? '');
+          handleSocketMessage(rawPayload);
+        };
+
+        socket.onclose = () => {
+          if (activeSocketRef.current !== socket) return;
+          window.clearTimeout(connectTimeoutId);
+          if (pingIntervalRef.current !== null) {
+            window.clearInterval(pingIntervalRef.current);
+            pingIntervalRef.current = null;
+          }
+          setIsConnected(false);
+          setIsConnecting(false);
+          connectingRef.current = false;
+          if (wsRef.current === socket) wsRef.current = null;
+          activeSocketRef.current = null;
+          scheduleReconnect();
+        };
+
+        socket.onerror = () => {
+          window.clearTimeout(connectTimeoutId);
+          if (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN) {
+            socket.close();
+          }
+        };
+      } catch {
+        setIsConnected(false);
+        setIsConnecting(false);
+        connectingRef.current = false;
+        scheduleReconnect();
+      }
+    },
+    [
+      fitAddonRef,
+      handleSocketMessage,
+      initialCommandRef,
+      scheduleReconnect,
+      isConnected,
+      isConnecting,
+      isPlainShellRef,
+      selectedProjectRef,
+      selectedSessionRef,
+      setAuthUrl,
+      terminalRef,
+      wsRef,
+    ],
+  );
+
+  const connectToShell = useCallback(() => {
+    if (!isInitialized || isConnected || isConnecting || connectingRef.current) {
+      return;
+    }
+
+    manualDisconnectRef.current = false;
+    connectingRef.current = true;
+    setIsConnecting(true);
+    connectWebSocket(true);
+  }, [connectWebSocket, isConnected, isConnecting, isInitialized]);
+
+  const disconnectFromShell = useCallback(() => {
+    manualDisconnectRef.current = true;
+    if (reconnectTimeoutRef.current !== null) {
+      window.clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    closeSocket();
+    clearTerminalScreen();
+    setIsConnected(false);
+    setIsConnecting(false);
+    connectingRef.current = false;
+    setAuthUrl('');
+  }, [clearTerminalScreen, closeSocket, setAuthUrl]);
+
+  useEffect(() => {
+    if (!autoConnect || !isInitialized || isConnecting || isConnected) {
+      return;
+    }
+
+    connectToShell();
+  }, [autoConnect, connectToShell, isConnected, isConnecting, isInitialized, reconnectTick]);
+
+  useEffect(() => {
+    unmountedRef.current = false;
+    return () => {
+      unmountedRef.current = true;
+      manualDisconnectRef.current = true;
+      if (reconnectTimeoutRef.current !== null) {
+        window.clearTimeout(reconnectTimeoutRef.current);
+      }
+      activeSocketRef.current = null;
+    };
+  }, []);
+
+  return {
+    isConnected,
+    isConnecting,
+    closeSocket,
+    connectToShell,
+    disconnectFromShell,
+  };
+}

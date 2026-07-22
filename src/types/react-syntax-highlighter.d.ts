@@ -1,0 +1,11 @@
+declare module 'react-syntax-highlighter';
+declare module 'react-syntax-highlighter/dist/esm/styles/prism';
+declare module 'react-syntax-highlighter/dist/esm/prism-light';
+declare module 'react-syntax-highlighter/dist/esm/languages/prism/javascript';
+declare module 'react-syntax-highlighter/dist/esm/languages/prism/typescript';
+declare module 'react-syntax-highlighter/dist/esm/languages/prism/json';
+declare module 'react-syntax-highlighter/dist/esm/languages/prism/bash';
+declare module 'react-syntax-highlighter/dist/esm/languages/prism/python';
+declare module 'react-syntax-highlighter/dist/esm/languages/prism/markup';
+declare module 'react-syntax-highlighter/dist/esm/languages/prism/css';
+declare module 'react-syntax-highlighter/dist/esm/languages/prism/diff';

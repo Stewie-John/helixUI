@@ -1,0 +1,102 @@
+import type { ReactNode, RefObject } from 'react';
+import type { FileTreeNode as FileTreeNodeType, FileTreeViewMode } from '../types/types';
+import FileTreeNode from './FileTreeNode';
+
+type FileTreeListProps = {
+  items: FileTreeNodeType[];
+  viewMode: FileTreeViewMode;
+  expandedDirs: Set<string>;
+  loadingDirs?: Set<string>;
+  onItemClick: (item: FileTreeNodeType) => void;
+  renderFileIcon: (filename: string) => ReactNode;
+  formatFileSize: (bytes?: number) => string;
+  formatRelativeTime: (date?: string) => string;
+  onRename?: (item: FileTreeNodeType) => void;
+  onDelete?: (item: FileTreeNodeType) => void;
+  onNewFile?: (path: string) => void;
+  onNewFolder?: (path: string) => void;
+  onCopyPath?: (item: FileTreeNodeType) => void;
+  onDownload?: (item: FileTreeNodeType) => void;
+  onRefresh?: () => void;
+  onMove?: (sourcePath: string, targetDirPath: string) => void;
+  rootPath?: string;
+  externalDropTarget?: string | null;
+  onExternalDragOver?: (event: React.DragEvent, targetPath: string) => void;
+  onExternalDrop?: (event: React.DragEvent, targetPath: string) => void;
+  // Rename state for inline editing
+  renamingItem?: FileTreeNodeType | null;
+  renameValue?: string;
+  setRenameValue?: (value: string) => void;
+  handleConfirmRename?: () => void;
+  handleCancelRename?: () => void;
+  renameInputRef?: RefObject<HTMLInputElement>;
+  operationLoading?: boolean;
+};
+
+export default function FileTreeList({
+  items,
+  viewMode,
+  expandedDirs,
+  loadingDirs,
+  onItemClick,
+  renderFileIcon,
+  formatFileSize,
+  formatRelativeTime,
+  onRename,
+  onDelete,
+  onNewFile,
+  onNewFolder,
+  onCopyPath,
+  onDownload,
+  onRefresh,
+  onMove,
+  rootPath = '',
+  externalDropTarget,
+  onExternalDragOver,
+  onExternalDrop,
+  renamingItem,
+  renameValue,
+  setRenameValue,
+  handleConfirmRename,
+  handleCancelRename,
+  renameInputRef,
+  operationLoading,
+}: FileTreeListProps) {
+  return (
+    <div>
+      {items.map((item) => (
+        <FileTreeNode
+          key={item.path}
+          item={item}
+          level={0}
+          viewMode={viewMode}
+          expandedDirs={expandedDirs}
+          loadingDirs={loadingDirs}
+          onItemClick={onItemClick}
+          renderFileIcon={renderFileIcon}
+          formatFileSize={formatFileSize}
+          formatRelativeTime={formatRelativeTime}
+          onRename={onRename}
+          onDelete={onDelete}
+          onNewFile={onNewFile}
+          onNewFolder={onNewFolder}
+          onCopyPath={onCopyPath}
+          onDownload={onDownload}
+          onRefresh={onRefresh}
+          onMove={onMove}
+          parentPath={rootPath}
+          externalDropTarget={externalDropTarget}
+          onExternalDragOver={onExternalDragOver}
+          onExternalDrop={onExternalDrop}
+          renamingItem={renamingItem}
+          renameValue={renameValue}
+          setRenameValue={setRenameValue}
+          handleConfirmRename={handleConfirmRename}
+          handleCancelRename={handleCancelRename}
+          renameInputRef={renameInputRef}
+          operationLoading={operationLoading}
+        />
+      ))}
+    </div>
+  );
+}

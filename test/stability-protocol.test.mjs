@@ -1,0 +1,74 @@
+import assert from 'node:assert/strict';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import test from 'node:test';
+import { readBoundedJsonlLines } from '../server/utils/bounded-jsonl.js';
+import { TtlIdempotencyCache } from '../server/utils/ttl-idempotency.js';
+import { filterClientInstanceTargets } from '../server/utils/client-routing.js';
+
+test('targeted model frames stay in their originating browser tab', () => {
+  const firstTab = { _clientInstanceId: 'tab-a' };
+  const secondTab = { _clientInstanceId: 'tab-b' };
+  const legacyTab = {};
+  const clients = new Set([firstTab, secondTab, legacyTab]);
+
+  assert.deepEqual(filterClientInstanceTargets(clients, 'tab-a'), [firstTab]);
+  assert.deepEqual(filterClientInstanceTargets(clients, 'tab-b'), [secondTab]);
+  assert.deepEqual(filterClientInstanceTargets(clients, null), [firstTab, secondTab, legacyTab]);
+});
+
+test('a reconnect replay is accepted only once', () => {
+  let now = 1_000;
+  const cache = new TtlIdempotencyCache({
+    ttlMs: 10_000,
+    maxEntries: 10,
+    now: () => now,
+  });
+
+  assert.equal(cache.remember('user:codex:123'), false);
+  assert.equal(cache.remember('user:codex:123'), true);
+  now += 10_001;
+  assert.equal(cache.remember('user:codex:123'), false);
+});
+
+test('the command cache remains bounded and expires stale entries', () => {
+  let now = 1_000;
+  const cache = new TtlIdempotencyCache({
+    ttlMs: 100,
+    maxEntries: 2,
+    now: () => now,
+  });
+
+  cache.remember('a');
+  cache.remember('b');
+  cache.remember('c');
+  assert.equal(cache.size, 2);
+  assert.equal(cache.remember('a'), false);
+  assert.equal(cache.size, 2);
+
+  now += 101;
+  cache.sweep();
+  assert.equal(cache.size, 0);
+});
+
+test('oversized JSONL records are skipped without losing later usage records', async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'ccui-jsonl-'));
+  const filePath = path.join(directory, 'session.jsonl');
+  try {
+    await writeFile(filePath, [
+      JSON.stringify({ type: 'assistant', value: 1 }),
+      JSON.stringify({ type: 'tool_result', output: 'x'.repeat(4096) }),
+      JSON.stringify({ type: 'assistant', value: 2 }),
+      '',
+    ].join('\n'));
+
+    const values = [];
+    for await (const line of readBoundedJsonlLines(filePath, 1024)) {
+      values.push(JSON.parse(line).value);
+    }
+    assert.deepEqual(values, [1, 2]);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
