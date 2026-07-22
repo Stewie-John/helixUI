@@ -164,6 +164,20 @@ try {
   if (!authStatus.needsSetup || authStatus.isAuthenticated) {
     throw new Error(`Unexpected first-run auth status: ${JSON.stringify(authStatus)}`);
   }
+  const protectedRequests = [
+    ['GET', '/api/projects'],
+    ['GET', '/api/projects/example/folders'],
+    ['GET', '/api/user/daily-input'],
+    ['GET', '/api/sys-stats'],
+    ['GET', '/api/browse?path=.'],
+    ['POST', '/api/agent'],
+  ];
+  for (const [method, requestPath] of protectedRequests) {
+    const response = await fetch(`${baseUrl}${requestPath}`, { method });
+    if (response.status !== 401) {
+      throw new Error(`Unauthenticated ${method} ${requestPath} returned ${response.status}, expected 401`);
+    }
+  }
   const registration = await fetch(`${baseUrl}/api/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
