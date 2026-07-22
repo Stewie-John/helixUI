@@ -3,9 +3,12 @@ import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 import 'katex/dist/katex.min.css'
+import { removeStaleBundleRecoveryQuery } from './utils/staleBundleRecovery'
 
 // Initialize i18n
 import './i18n/config.js'
+
+removeStaleBundleRecoveryQuery()
 
 // The HTTP-to-HTTPS handoff carries only the existing login token in a URL
 // fragment. Consume and erase it before AuthContext reads localStorage.

@@ -1,47 +1,35 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
-import WebSocket from 'ws';
+import https from 'node:https';
 
 await import('../server/load-env.js');
-const originalLog = console.log;
-console.log = () => {};
-const [{ initializeDatabase, userDb }, { generateToken }] = await Promise.all([
-  import('../server/database/db.js'),
-  import('../server/middleware/auth.js'),
-]);
-await initializeDatabase();
-const user = userDb.getFirstUser();
-console.log = originalLog;
-
-if (!user) throw new Error('No local user is available for the idle check');
-const token = generateToken(user);
 const securePort = Number(process.env.HTTPS_PORT || 3443);
 
 const getActiveTurnCount = () => new Promise((resolve, reject) => {
-  const socket = new WebSocket(`wss://127.0.0.1:${securePort}/ws?token=${encodeURIComponent(token)}`, {
+  const request = https.get({
+    hostname: '127.0.0.1',
+    port: securePort,
+    path: '/health',
     rejectUnauthorized: false,
+    timeout: 5000,
+  }, (response) => {
+    let body = '';
+    response.setEncoding('utf8');
+    response.on('data', (chunk) => { body += chunk; });
+    response.on('end', () => {
+      try {
+        const health = JSON.parse(body);
+        if (!Number.isFinite(health.activeTurnCount)) {
+          throw new Error('Health response omitted activeTurnCount');
+        }
+        resolve(health.activeTurnCount);
+      } catch (error) {
+        reject(error);
+      }
+    });
   });
-  const timeout = setTimeout(() => {
-    socket.terminate();
-    reject(new Error('Active-turn check timed out'));
-  }, 5000);
-  socket.once('open', () => socket.send(JSON.stringify({ type: 'get-active-sessions' })));
-  socket.on('message', (raw) => {
-    const message = JSON.parse(String(raw));
-    if (message.type !== 'active-sessions') return;
-    clearTimeout(timeout);
-    const sessions = message.sessions || {};
-    const count = Object.values(sessions).reduce(
-      (sum, entries) => sum + (Array.isArray(entries) ? entries.length : 0),
-      0,
-    );
-    socket.close();
-    resolve(count);
-  });
-  socket.once('error', (error) => {
-    clearTimeout(timeout);
-    reject(error);
-  });
+  request.on('timeout', () => request.destroy(new Error('Active-turn check timed out')));
+  request.on('error', reject);
 });
 
 let consecutiveIdleChecks = 0;

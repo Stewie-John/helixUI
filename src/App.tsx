@@ -11,6 +11,7 @@ import { WebSocketProvider } from './contexts/WebSocketContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import AppContent from './components/app/AppContent';
 import i18n from './i18n/config.js';
+import { scheduleStaleBundleRecovery } from './utils/staleBundleRecovery';
 
 /**
  * 顶层错误边界：防止任何子组件崩溃导致整页黑屏。
@@ -31,6 +32,7 @@ class AppErrorBoundary extends Component<
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('[AppErrorBoundary] Uncaught error:', error, errorInfo);
+    if (scheduleStaleBundleRecovery(error)) return;
     this.setState({ errorInfo });
   }
 

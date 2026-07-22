@@ -762,11 +762,11 @@ app.get('/health', (req, res) => {
     const response = {
         status: isDrainingForRestart ? 'draining' : 'ok',
         timestamp: new Date().toISOString(),
+        activeTurnCount: Object.values(activeTurns).reduce((sum, count) => sum + count, 0),
     };
     if (process.env.HEALTH_DETAILS === 'true') {
         response.installMode = installMode;
         response.activeTurns = activeTurns;
-        response.activeTurnCount = Object.values(activeTurns).reduce((sum, count) => sum + count, 0);
     }
     res.json(response);
 });

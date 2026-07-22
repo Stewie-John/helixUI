@@ -60,7 +60,7 @@ export default function FileTree({ selectedProject, onFileOpen }: FileTreeProps)
     }
   }, [toast]);
 
-  const { files, loading, refreshFiles, loadDirectoryChildren, loadingDirs } = useFileTreeData(selectedProject);
+  const { files, loading, refreshFiles, refreshDirectory, loadDirectoryChildren, loadingDirs } = useFileTreeData(selectedProject);
   const { viewMode, changeViewMode } = useFileTreeViewMode();
   const { expandedDirs, toggleDirectory, expandDirectories, collapseAll } = useExpandedDirectories();
   const { searchQuery, setSearchQuery, filteredFiles } = useFileTreeSearch({
@@ -81,13 +81,17 @@ export default function FileTree({ selectedProject, onFileOpen }: FileTreeProps)
     }
   }, [currentBrowsePath]);
 
-  const refreshCurrentView = useCallback(() => {
+  const refreshCurrentView = useCallback((targetPath?: string) => {
     if (isBrowseMode) {
       void refreshBrowseFiles();
       return;
     }
+    if (targetPath) {
+      void refreshDirectory(targetPath);
+      return;
+    }
     refreshFiles();
-  }, [isBrowseMode, refreshBrowseFiles, refreshFiles]);
+  }, [isBrowseMode, refreshBrowseFiles, refreshDirectory, refreshFiles]);
 
   // File operations
   const operations = useFileTreeOperations({

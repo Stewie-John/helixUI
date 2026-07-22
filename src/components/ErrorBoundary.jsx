@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { ErrorBoundary as ReactErrorBoundary } from 'react-error-boundary';
+import { scheduleStaleBundleRecovery } from '../utils/staleBundleRecovery';
 
 function ErrorFallback({ error, resetErrorBoundary, showDetails, componentStack }) {
   return (
@@ -45,6 +46,7 @@ function ErrorBoundary({ children, showDetails = false, onRetry = undefined, res
 
   const handleError = useCallback((error, errorInfo) => {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
+    if (scheduleStaleBundleRecovery(error)) return;
     setComponentStack(errorInfo?.componentStack || null);
   }, []);
 

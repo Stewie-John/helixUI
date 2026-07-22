@@ -92,7 +92,7 @@ const useWebSocketProviderState = (): WebSocketContextType => {
   // 发出 *-command 后启动计时；收到 command-ack 清除；超时则判定消息丢失（僵尸连接），
   // 主动触发重连并向消费队列注入 command-undelivered，让 UI 把该消息标记为「未送达」。
   const pendingAckRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
-  const ACK_TIMEOUT_MS = 7000;
+  const ACK_TIMEOUT_MS = 15000;
   const LIVENESS_PING_TIMEOUT_MS = 15000;
   // 始终指向最新的 verifyConnection，供 sendMessage（空依赖 useCallback）在送达超时时调用
   const verifyConnectionRef = useRef<(() => void) | null>(null);
@@ -207,11 +207,24 @@ const useWebSocketProviderState = (): WebSocketContextType => {
       websocket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          // Model turns started by another browser tab may share the same account
+          // and even the same temporary "new chat" state. Targeted frames must be
+          // rejected before they enter the shared React message queue.
           if (
             data?.targetClientInstanceId &&
             data.targetClientInstanceId !== clientInstanceIdRef.current
           ) {
             return;
+          }
+          // Any frame correlated to the submitted turn proves that the command
+          // reached the server. This avoids a false "not delivered" state when
+          // a busy event loop delays the dedicated command-ack frame.
+          if (typeof data?.turnClientTs === 'number') {
+            const timer = pendingAckRef.current.get(data.turnClientTs);
+            if (timer) {
+              clearTimeout(timer);
+              pendingAckRef.current.delete(data.turnClientTs);
+            }
           }
           // 收到 pong：清除僵尸连接超时计时器
           lastServerMsgAtRef.current = Date.now(); // 每收到任意消息都更新，pong 也算

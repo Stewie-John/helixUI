@@ -6,7 +6,7 @@ import { api } from '../../../utils/api';
 type UseFileTreeUploadOptions = {
   selectedProject: Project | null;
   rootTargetPath?: string;
-  onRefresh: () => void;
+  onRefresh: (targetPath?: string) => void;
   showToast: (message: string, type: 'success' | 'error') => void;
 };
 
@@ -150,7 +150,7 @@ export const useFileTreeUpload = ({
             : `已上传 ${uploaded} 个文件`,
           'success',
         );
-        onRefresh();
+        onRefresh(targetPath || undefined);
       } catch (err) {
         console.error('Upload error:', err);
         showToast(err instanceof Error ? err.message : 'Upload failed', 'error');

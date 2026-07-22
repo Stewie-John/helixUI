@@ -26,10 +26,31 @@ function updateNodeChildren(nodes: FileTreeNode[], targetPath: string, children:
   });
 }
 
+function findNode(nodes: FileTreeNode[], targetPath: string): FileTreeNode | null {
+  for (const node of nodes) {
+    if (node.path === targetPath) return node;
+    if (node.children) {
+      const match = findNode(node.children, targetPath);
+      if (match) return match;
+    }
+  }
+  return null;
+}
+
+function preserveLoadedSubtrees(fresh: FileTreeNode[], previous: FileTreeNode[]): FileTreeNode[] {
+  const previousByPath = new Map(previous.map((node) => [node.path, node]));
+  return fresh.map((node) => {
+    const oldNode = previousByPath.get(node.path);
+    if (!oldNode?._loaded) return node;
+    return { ...node, _loaded: true, children: oldNode.children || [] };
+  });
+}
+
 type UseFileTreeDataResult = {
   files: FileTreeNode[];
   loading: boolean;
   refreshFiles: () => void;
+  refreshDirectory: (path: string) => Promise<void>;
   loadDirectoryChildren: (item: FileTreeNode) => Promise<void>;
   loadingDirs: Set<string>;
 };
@@ -44,6 +65,28 @@ export function useFileTreeData(selectedProject: Project | null): UseFileTreeDat
   const refreshFiles = useCallback(() => {
     setRefreshKey((prev) => prev + 1);
   }, []);
+
+  const refreshDirectory = useCallback(async (targetPath: string) => {
+    if (!selectedProject?.name || !targetPath) return;
+    setLoadingDirs((previous) => new Set(previous).add(targetPath));
+    try {
+      const response = await (api as any).getFilesAtPath(selectedProject.name, targetPath);
+      if (!response.ok) return;
+      const children = await response.json() as FileTreeNode[];
+      setFiles((previous) => {
+        const oldChildren = findNode(previous, targetPath)?.children || [];
+        return updateNodeChildren(previous, targetPath, preserveLoadedSubtrees(children, oldChildren));
+      });
+    } catch {
+      // Keep the current tree visible if a targeted refresh fails.
+    } finally {
+      setLoadingDirs((previous) => {
+        const next = new Set(previous);
+        next.delete(targetPath);
+        return next;
+      });
+    }
+  }, [selectedProject?.name]);
 
   // 懒加载：按需请求子目录内容
   const loadDirectoryChildren = useCallback(async (item: FileTreeNode) => {
@@ -100,7 +143,7 @@ export function useFileTreeData(selectedProject: Project | null): UseFileTreeDat
 
         const data = (await response.json()) as FileTreeNode[];
         if (isActive) {
-          setFiles(data);
+          setFiles((previous) => preserveLoadedSubtrees(data, previous));
         }
       } catch (error) {
         if ((error as { name?: string }).name === 'AbortError') {
@@ -130,6 +173,7 @@ export function useFileTreeData(selectedProject: Project | null): UseFileTreeDat
     files,
     loading,
     refreshFiles,
+    refreshDirectory,
     loadDirectoryChildren,
     loadingDirs,
   };

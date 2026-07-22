@@ -44,6 +44,7 @@ type SessionMessageLoadOptions = {
   silent?: boolean;
   signal?: AbortSignal;
   historyWindow?: number;
+  expectedViewKey?: string | null;
 };
 
 const getRawSessionMessageKey = (message: any) => {
@@ -626,6 +627,15 @@ export function useChatSessionState({
 
         let data = await response.json();
 
+        // Large history requests may finish after the user has selected another
+        // conversation. Never let a stale response mutate the new view.
+        if (
+          options.expectedViewKey !== undefined &&
+          visibleSessionStorageKeyRef.current !== options.expectedViewKey
+        ) {
+          return [];
+        }
+
         // provider 兜底重试：claude 端点查无内容时，该会话很可能是被误判的 codex 会话
         // （例如 shell 里刚新建、尚未进入 codex 索引，或 __provider 元数据缺失而回退成了默认 'claude'）。
         // 此时自动改用 codex 端点重试一次；若 codex 有内容则采用之。对真正为空的 claude 会话仅多一次无害请求。
@@ -646,6 +656,12 @@ export function useChatSessionState({
             );
             if (codexResponse.ok) {
               const codexData = await codexResponse.json();
+              if (
+                options.expectedViewKey !== undefined &&
+                visibleSessionStorageKeyRef.current !== options.expectedViewKey
+              ) {
+                return [];
+              }
               if (Number(codexData.total || 0) > 0 || (codexData.messages && codexData.messages.length > 0)) {
                 data = codexData;
               }
@@ -840,6 +856,11 @@ const isNearBottom = useCallback(() => {
         return false;
       }
 
+      const requestViewKey = getVersionedChatMessagesStorageKey(
+        selectedProject.name,
+        selectedSession.id,
+      );
+
       isLoadingMoreRef.current = true;
       const previousScrollHeight = container.scrollHeight;
       const previousScrollTop = container.scrollTop;
@@ -859,7 +880,9 @@ const isNearBottom = useCallback(() => {
             selectedSession.id,
             true,
             sessionProvider,
+            { expectedViewKey: requestViewKey },
           );
+          if (visibleSessionStorageKeyRef.current !== requestViewKey) return false;
           if (moreMessages.length === 0) break;
           loadedRawCount += moreMessages.length;
           newSessionMessages = [...moreMessages, ...newSessionMessages];
@@ -879,6 +902,8 @@ const isNearBottom = useCallback(() => {
         if (loadedRawCount === 0) {
           return false;
         }
+
+        if (visibleSessionStorageKeyRef.current !== requestViewKey) return false;
 
         // 原子更新：同时设置 sessionMessages + chatMessages，避免两次渲染的中间态导致页面跳动
         // （若只更新 sessionMessages，sync useEffect 会在下一帧才更新 chatMessages，

@@ -171,21 +171,6 @@ function ChatInterface({
     streamBufferRef.current = '';
   }, []);
 
-  const sessionState = useChatSessionState({
-    selectedProject,
-    selectedSession,
-    ws,
-    sendMessage,
-    autoScrollToBottom,
-    externalMessageUpdate,
-    processingSessions,
-    activeSessions,
-    isConnected,
-    resetStreamingState,
-    pendingViewSessionRef,
-    systemSessionChangeTargetIdRef,
-  });
-
   const {
     provider,
     setProvider,
@@ -248,7 +233,20 @@ function ChatInterface({
     scrollToBottomAndReset,
     handleScroll,
     handleUserScrollIntent,
-  } = sessionState;
+  } = useChatSessionState({
+    selectedProject,
+    selectedSession,
+    ws,
+    sendMessage,
+    autoScrollToBottom,
+    externalMessageUpdate,
+    processingSessions,
+    activeSessions,
+    isConnected,
+    resetStreamingState,
+    pendingViewSessionRef,
+    systemSessionChangeTargetIdRef,
+  });
 
   const queueScopeKey = selectedSession?.id || currentSessionId || null;
   // The session registry is authoritative during reconnects. `isLoading` can
