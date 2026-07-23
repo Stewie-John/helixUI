@@ -5,8 +5,11 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const ignoredDirectories = new Set(['.git', 'node_modules', 'dist', 'coverage']);
+// Scan production output too: minification must not hide a private constant that
+// was accidentally compiled into the browser bundle.
+const ignoredDirectories = new Set(['.git', 'node_modules', 'coverage']);
 const forbiddenDirectoryPaths = new Set(['.certs', 'backups', 'data', 'logs', 'public/screenshots']);
+const forbiddenDirectoryPrefixes = ['.security-test-'];
 const forbiddenFileNames = new Set([
   '.env',
   '.jwt-secret',
@@ -40,7 +43,10 @@ function walk(directory, files = []) {
     const absolutePath = path.join(directory, entry.name);
     const relativePath = path.relative(root, absolutePath).split(path.sep).join('/');
     if (entry.isDirectory()) {
-      if (forbiddenDirectoryPaths.has(relativePath)) {
+      if (
+        forbiddenDirectoryPaths.has(relativePath)
+        || forbiddenDirectoryPrefixes.some((prefix) => relativePath.startsWith(prefix))
+      ) {
         files.push({ relativePath, violation: 'forbidden runtime/private directory' });
       } else {
         walk(absolutePath, files);
@@ -64,7 +70,10 @@ for (const file of walk(root)) {
     violations.push(`${file.relativePath}: forbidden secret/runtime file`);
     continue;
   }
-  if (file.relativePath === 'scripts/check-public-release.mjs') continue;
+  if (
+    file.relativePath === 'scripts/check-public-release.mjs'
+    || file.relativePath === 'scripts/test-package-install.mjs'
+  ) continue;
   if (file.relativePath === 'package-lock.json' || !textExtensions.has(extension)) continue;
   const content = fs.readFileSync(file.absolutePath, 'utf8');
   for (const [label, pattern] of contentRules) {

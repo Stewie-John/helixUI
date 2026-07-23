@@ -114,7 +114,14 @@ router.post('/register', authRateLimit, async (req, res) => {
 
     // Accounts created by an administrator receive a one-time password and
     // must replace it before any normal API or WebSocket access is allowed.
-    const user = userDb.createUser(username, passwordHash, !isFirstUser);
+    const user = isFirstUser
+      ? userDb.createFirstUser(username, passwordHash)
+      : userDb.createUser(username, passwordHash, true);
+    if (!user) {
+      return res.status(409).json({
+        error: 'Initial setup was completed by another request. Please sign in with the administrator account.',
+      });
+    }
 
     // 首装：注册即登录（保持改造前行为）；
     // admin 创建他人账号：不签发 token、不影响 admin 当前会话

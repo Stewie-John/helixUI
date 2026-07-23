@@ -100,6 +100,34 @@ try {
   if (forbiddenFiles.length) {
     throw new Error(`Private/runtime files were packed: ${forbiddenFiles.join(', ')}`);
   }
+  const packagedContentRules = [
+    ['private deployment path', /(?:\/mnt\/data\/bks|\/home\/bks)(?:\/|\b)/i],
+    ['private deployment address', /\b10\.102\.34\.208\b/],
+    ['private project identifier', /(?:^|[^A-Za-z0-9])(?:Aletheia|YKX|LSJ)(?:[^A-Za-z0-9]|$)/i],
+    ['private account identifier', /\b(?:Stewie|LGS|YJL|ZJR)\b/],
+    ['private key material', /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/],
+    ['GitHub access token', /\bghp_(?!x{20,}\b)[A-Za-z0-9]{20,}\b/],
+    ['GitHub fine-grained access token', /\bgithub_pat_(?!x{20,}\b)[A-Za-z0-9_]{20,}\b/],
+    ['AWS access key', /\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/],
+  ];
+  const packageTextExtensions = new Set([
+    '', '.cjs', '.css', '.html', '.js', '.json', '.mjs', '.md', '.py',
+    '.sh', '.sql', '.svg', '.txt', '.yaml', '.yml',
+  ]);
+  const packagedContentViolations = [];
+  for (const file of manifest.files) {
+    if (file.path === 'scripts/check-public-release.mjs') continue;
+    if (!packageTextExtensions.has(path.extname(file.path).toLowerCase())) continue;
+    const sourcePath = path.join(projectRoot, file.path);
+    if (!fs.existsSync(sourcePath) || fs.statSync(sourcePath).size > 20 * 1024 * 1024) continue;
+    const content = fs.readFileSync(sourcePath, 'utf8');
+    for (const [label, pattern] of packagedContentRules) {
+      if (pattern.test(content)) packagedContentViolations.push(`${file.path}: ${label}`);
+    }
+  }
+  if (packagedContentViolations.length) {
+    throw new Error(`Private content was packed: ${packagedContentViolations.join(', ')}`);
+  }
 
   fs.writeFileSync(path.join(consumerRoot, 'package.json'), JSON.stringify({ private: true }, null, 2));
   const installEnv = {
@@ -164,6 +192,22 @@ try {
   if (!authStatus.needsSetup || authStatus.isAuthenticated) {
     throw new Error(`Unexpected first-run auth status: ${JSON.stringify(authStatus)}`);
   }
+  const rootResponse = await fetch(baseUrl);
+  const contentSecurityPolicy = rootResponse.headers.get('content-security-policy') || '';
+  if (
+    !contentSecurityPolicy.includes("default-src 'self'") ||
+    !contentSecurityPolicy.includes("object-src 'none'") ||
+    !contentSecurityPolicy.includes("frame-src 'none'") ||
+    !contentSecurityPolicy.includes("script-src 'self'") ||
+    /(?:^|;\s*)script-src[^;]*'unsafe-inline'/.test(contentSecurityPolicy)
+  ) {
+    throw new Error(`Installed server is missing the expected CSP: ${contentSecurityPolicy}`);
+  }
+  const modelConstantsResponse = await fetch(`${baseUrl}/shared/modelConstants.js`);
+  const modelConstantsSource = await modelConstantsResponse.text();
+  if (!modelConstantsResponse.ok || !modelConstantsSource.includes('export const CODEX_MODELS')) {
+    throw new Error('Installed API documentation cannot load the shared model catalog');
+  }
   const protectedRequests = [
     ['GET', '/api/projects'],
     ['GET', '/api/projects/example/folders'],
@@ -178,11 +222,25 @@ try {
       throw new Error(`Unauthenticated ${method} ${requestPath} returned ${response.status}, expected 401`);
     }
   }
-  const registration = await fetch(`${baseUrl}/api/auth/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username: 'release-admin', password: 'temporary-pass-123' }),
-  }).then((response) => response.json());
+  const registrationAttempts = await Promise.all(
+    [
+      { username: 'release-admin', password: 'temporary-pass-123' },
+      { username: 'setup-racer', password: 'temporary-pass-456' },
+    ].map(async (credentials) => {
+      const response = await fetch(`${baseUrl}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials),
+      });
+      return { status: response.status, body: await response.json() };
+    })
+  );
+  const successfulRegistrations = registrationAttempts.filter(({ body }) => body.success && body.token);
+  const rejectedRegistrations = registrationAttempts.filter(({ status }) => status === 409);
+  if (successfulRegistrations.length !== 1 || rejectedRegistrations.length !== 1) {
+    throw new Error(`First-run registration was not atomic: ${JSON.stringify(registrationAttempts)}`);
+  }
+  const registration = successfulRegistrations[0].body;
   if (!registration.success || !registration.token) {
     throw new Error(`First-run registration failed: ${JSON.stringify(registration)}`);
   }
@@ -192,13 +250,34 @@ try {
   if (!projectsResponse.ok || !Array.isArray(await projectsResponse.json())) {
     throw new Error('Authenticated project listing failed');
   }
+  const snapshotTimestamp = 1_700_000_000_000;
+  const snapshotSource = path.join(workspacesRoot, 'snapshot.png');
+  fs.writeFileSync(snapshotSource, Buffer.from('89504e470d0a1a0a', 'hex'));
+  const snapshotResponse = await fetch(
+    `${baseUrl}/api/image?path=${encodeURIComponent(snapshotSource)}&snapshot=1&t=${snapshotTimestamp}`,
+    { headers: { Authorization: `Bearer ${registration.token}` } },
+  );
+  if (!snapshotResponse.ok) {
+    throw new Error(`Authenticated image snapshot failed with ${snapshotResponse.status}`);
+  }
+  await snapshotResponse.arrayBuffer();
+  const installedPackageRoot = path.join(consumerRoot, 'node_modules', '@stewiejohn', 'helix-ui');
   const paths = {
     database: fs.existsSync(path.join(dataRoot, 'auth.db')),
     projectCache: await waitForPath(path.join(dataRoot, 'projects-cache.json')),
     workspaces: fs.existsSync(workspacesRoot),
+    imageSnapshot: fs.existsSync(path.join(dataRoot, 'image-snapshots', String(snapshotTimestamp), 'snapshot.png')),
+    unexpectedPackageData: fs.existsSync(path.join(installedPackageRoot, 'data', 'image-snapshots')),
     unexpectedHomeData: fs.existsSync(path.join(homeRoot, '.cloudcli')),
   };
-  if (!paths.database || !paths.projectCache || !paths.workspaces || paths.unexpectedHomeData) {
+  if (
+    !paths.database ||
+    !paths.projectCache ||
+    !paths.workspaces ||
+    !paths.imageSnapshot ||
+    paths.unexpectedPackageData ||
+    paths.unexpectedHomeData
+  ) {
     throw new Error(`Installed runtime path isolation failed: ${JSON.stringify(paths)}`);
   }
 

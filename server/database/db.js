@@ -440,6 +440,21 @@ const userDb = {
     }
   },
 
+  // Atomically claim a fresh installation. Multiple setup requests can finish
+  // password hashing at the same time; only one may create the first admin.
+  createFirstUser: (username, passwordHash) => {
+    const create = db.transaction(() => {
+      const existing = db.prepare('SELECT id FROM users LIMIT 1').get();
+      if (existing) return null;
+      const result = db.prepare(`
+        INSERT INTO users (username, password_hash, must_change_password, has_completed_onboarding)
+        VALUES (?, ?, 0, 0)
+      `).run(username, passwordHash);
+      return { id: result.lastInsertRowid, username, must_change_password: 0 };
+    });
+    return create.immediate();
+  },
+
   // Get user by username
   getUserByUsername: (username) => {
     try {

@@ -29,14 +29,5 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
-    
-    <!-- 主动注销所有已注册的 Service Worker（避免旧 SW 拦截请求导致加载超时） -->
-    <script>
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(regs => {
-          regs.forEach(r => r.unregister());
-        });
-      }
-    </script>
   </body>
 </html>

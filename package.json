@@ -15,7 +15,7 @@
     "server/",
     "shared/",
     "dist/",
-    "scripts/",
+    "scripts/fix-node-pty.js",
     "README.md"
   ],
   "homepage": "https://github.com/StewartJohn0/helixui",

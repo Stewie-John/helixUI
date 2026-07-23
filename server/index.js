@@ -717,6 +717,24 @@ app.use((req, res, next) => {
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
     res.setHeader('Permissions-Policy', 'camera=(), geolocation=(), payment=()');
+    res.setHeader(
+        'Content-Security-Policy',
+        [
+            "default-src 'self'",
+            "base-uri 'self'",
+            "connect-src 'self' ws: wss:",
+            "font-src 'self' data:",
+            "frame-ancestors 'self'",
+            "frame-src 'none'",
+            "form-action 'self'",
+            "img-src 'self' data: blob:",
+            "media-src 'self' blob:",
+            "object-src 'none'",
+            "script-src 'self'",
+            "style-src 'self' 'unsafe-inline'",
+            "worker-src 'self' blob:",
+        ].join('; ')
+    );
     next();
 });
 
@@ -946,17 +964,28 @@ app.post('/api/user/daily-input', authenticateToken, (req, res) => {
 
 // Serve public files (like api-docs.html)
 app.use(express.static(path.join(__dirname, '../public')));
+app.get('/shared/modelConstants.js', (req, res) => {
+    res.sendFile(path.join(__dirname, '../shared/modelConstants.js'));
+});
 
 // Preserve the current login when moving from the HTTP origin to HTTPS. The
 // token stays in the URL fragment, so browsers do not send it to the server.
-app.get('/switch-to-https', (req, res) => {
+app.get('/switch-to-https.js', (req, res) => {
     const secureUrl = `https://${HTTPS_PUBLIC_HOST}:${HTTPS_PORT}/`;
     res.setHeader('Cache-Control', 'no-store');
-    res.type('html').send(`<!doctype html><meta charset="utf-8"><title>Opening secure CCUI</title><script>
+    res.type('application/javascript').send(`
       const token = localStorage.getItem('auth-token') || '';
       const target = ${JSON.stringify(secureUrl)} + (token ? '#ccui-auth=' + encodeURIComponent(token) : '');
       location.replace(target);
-    </script>`);
+    `);
+});
+
+app.get('/switch-to-https', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.type('html').send(
+        '<!doctype html><meta charset="utf-8"><title>Opening secure CCUI</title>' +
+        '<script src="/switch-to-https.js"></script>'
+    );
 });
 
 // 优先服务预压缩静态文件（Brotli > gzip > 原文件）
@@ -1459,7 +1488,9 @@ app.get('/api/projects/:projectName/files/content', authenticateToken, async (re
 });
 
 // 图片快照目录（与会话数据同级，持久化保存历史图片版本）
-const IMAGE_SNAPSHOT_DIR = path.join(__dirname, '../data/image-snapshots');
+const RUNTIME_DATA_DIR = process.env.CLOUDCLI_DATA_DIR || path.join(os.homedir(), '.cloudcli');
+const IMAGE_SNAPSHOT_DIR = path.join(RUNTIME_DATA_DIR, 'image-snapshots');
+const LEGACY_IMAGE_SNAPSHOT_DIR = path.join(__dirname, '../data/image-snapshots');
 
 // 服务器图片直出接口（需鉴权）：
 // 仅允许读取 WORKSPACES_ROOT 内的图片文件；支持快照模式防止历史消息图片被覆盖。
@@ -1516,14 +1547,22 @@ app.get('/api/image', authenticateToken, async (req, res) => {
         if (useSnapshot) {
             // 快照路径：data/image-snapshots/<msgTs>/<workspace-relative path>
             const snapshotPath = path.join(IMAGE_SNAPSHOT_DIR, String(msgTs), relativeFilePath);
+            const legacySnapshotPath = path.join(LEGACY_IMAGE_SNAPSHOT_DIR, String(msgTs), relativeFilePath);
 
             // 若快照已存在，直接返回（永久缓存，内容不会再变）
             const snapshotExists = await fsPromises.access(snapshotPath).then(() => true).catch(() => false);
-            if (snapshotExists) {
-                const mimeType = mime.lookup(snapshotPath) || 'image/png';
+            const legacySnapshotExists = !snapshotExists
+                && await fsPromises.access(legacySnapshotPath).then(() => true).catch(() => false);
+            const existingSnapshotPath = snapshotExists
+                ? snapshotPath
+                : legacySnapshotExists
+                    ? legacySnapshotPath
+                    : null;
+            if (existingSnapshotPath) {
+                const mimeType = mime.lookup(existingSnapshotPath) || 'image/png';
                 res.setHeader('Content-Type', mimeType);
                 res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-                return fs.createReadStream(snapshotPath).pipe(res);
+                return fs.createReadStream(existingSnapshotPath).pipe(res);
             }
 
             // 快照不存在：读取原文件并保存快照

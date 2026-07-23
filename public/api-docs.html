@@ -6,10 +6,6 @@
     <title>Claude Code UI - API Documentation</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" href="/favicon.png" />
-    
-    <!-- Prism.js for syntax highlighting -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
-    
     <style>
         * {
             margin: 0;
@@ -597,9 +593,9 @@
                     <div class="example-block">
                         <h4>Basic Request</h4>
                         <div class="tab-buttons">
-                            <button class="tab-button active" onclick="showTab('curl-basic')">cURL</button>
-                            <button class="tab-button" onclick="showTab('js-basic')">JavaScript</button>
-                            <button class="tab-button" onclick="showTab('python-basic')">Python</button>
+                            <button class="tab-button active" type="button" data-tab="curl-basic">cURL</button>
+                            <button class="tab-button" type="button" data-tab="js-basic">JavaScript</button>
+                            <button class="tab-button" type="button" data-tab="python-basic">Python</button>
                         </div>
 
                         <div class="tab-content active" id="curl-basic">
@@ -820,60 +816,6 @@ data: {"type":"done"}</code></pre>
         </div>
     </div>
 
-    <script type="module">
-        // Import model constants
-        import { CLAUDE_MODELS, CURSOR_MODELS, CODEX_MODELS } from '/shared/modelConstants.js';
-
-        // Dynamic URL replacement
-        const apiUrl = window.location.origin;
-        document.querySelectorAll('.api-url').forEach(el => {
-            el.textContent = apiUrl;
-        });
-
-        // Dynamically populate model documentation
-        window.addEventListener('DOMContentLoaded', () => {
-            const modelCell = document.getElementById('model-options-cell');
-            if (modelCell) {
-                const claudeModels = CLAUDE_MODELS.OPTIONS.map(m => `<code>${m.value}</code>`).join(', ');
-                const cursorModels = CURSOR_MODELS.OPTIONS.slice(0, 8).map(m => `<code>${m.value}</code>`).join(', ');
-                const codexModels = CODEX_MODELS.OPTIONS.map(m => `<code>${m.value}</code>`).join(', ');
-
-                modelCell.innerHTML = `
-                    Model identifier for the AI provider:<br><br>
-                    <strong>Claude:</strong> ${claudeModels} (default: <code>${CLAUDE_MODELS.DEFAULT}</code>)<br><br>
-                    <strong>Cursor:</strong> ${cursorModels}, and more (default: <code>${CURSOR_MODELS.DEFAULT}</code>)<br><br>
-                    <strong>Codex:</strong> ${codexModels} (default: <code>${CODEX_MODELS.DEFAULT}</code>)
-                `;
-            }
-        });
-
-        // Tab switching
-        window.showTab = function(tabName) {
-            const parentBlock = event.target.closest('.example-block');
-            if (!parentBlock) return;
-
-            parentBlock.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            parentBlock.querySelectorAll('.tab-button').forEach(btn => {
-                btn.classList.remove('active');
-            });
-
-            const targetTab = parentBlock.querySelector('#' + tabName);
-            if (targetTab) {
-                targetTab.classList.add('active');
-                event.target.classList.add('active');
-            }
-        };
-    </script>
-
-    <!-- Prism.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-yaml.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-http.min.js"></script>
+    <script type="module" src="/api-docs.js"></script>
 </body>
 </html>
