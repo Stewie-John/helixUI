@@ -465,6 +465,15 @@ export function useChatSessionState({
     () => chatMessages.some((message) => message.type === 'user' && message.pending),
     [chatMessages],
   );
+  // Keep session-switch guards initialized before any effect that captures
+  // them. This avoids temporal-dead-zone failures in optimized browser bundles.
+  const isSystemChangeExemptionValid = useCallback(
+    (sessionId?: string | null) => {
+      const target = systemSessionChangeTargetIdRef.current;
+      return target == null || target === sessionId;
+    },
+    [systemSessionChangeTargetIdRef],
+  );
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -563,6 +572,7 @@ export function useChatSessionState({
   const externalReloadInFlightRef = useRef(false);
   const externalReloadQueuedRef = useRef(false);
   const prevExternalUpdateRef = useRef(0);
+  const prevSessionMessagesLengthRef = useRef(0);
   // 跟踪最新 sessionMessages（用于 loadOlderMessages 闭包，避免 stale closure）
   const sessionMessagesRef = useRef<any[]>([]);
   // 标记：loadOlderMessages 已原子更新 chatMessages，sync useEffect 应跳过本次
@@ -1103,7 +1113,6 @@ const isNearBottom = useCallback(() => {
     pendingWindowRestoreRef.current = null;
   }, [visibleMessageCount]);
 
-  const prevSessionMessagesLengthRef = useRef(0);
   const isInitialLoadRef = useRef(true);
 
   // 同步 isSystemSessionChange state → ref，让 session change effect 读取最新值（兜底）
@@ -1126,17 +1135,6 @@ const isNearBottom = useCallback(() => {
       systemSessionChangeTargetIdRef.current = null;
     }
   }, [systemSessionChangeTargetIdRef]);
-
-  // 串话守卫：system-change 的「不清屏/不重载」豁免是否对给定会话仍有效。
-  // target 为 null：维持原行为（如压缩续集，不改 selectedSession.id）。
-  // target 非 null：仅当选中会话正是该目标时豁免；用户切到无关会话即作废 → 正常加载新会话。
-  const isSystemChangeExemptionValid = useCallback(
-    (sessionId?: string | null) => {
-      const target = systemSessionChangeTargetIdRef.current;
-      return target == null || target === sessionId;
-    },
-    [systemSessionChangeTargetIdRef],
-  );
 
   useEffect(() => {
     pendingInitialScrollRef.current = true;
@@ -1846,15 +1844,12 @@ const isNearBottom = useCallback(() => {
   }, [autoScrollToBottom, scrollToBottom]);
 
   // ResizeObserver is the primary signal, but Safari can coalesce or defer its
-  // callbacks while markdown, fonts and tool rows are changing rapidly. During
-  // an active turn, periodically correct only a real bottom gap. This keeps the
-  // latest line visible without doing any work once the user starts browsing up.
+  // callbacks while markdown, fonts and tool rows are changing rapidly. Keep a
+  // cheap geometry-based fallback whenever bottom-follow is unlocked. Do not
+  // gate this on `isLoading`/activeSessions: those protocol states can briefly
+  // lag behind a stream or reconnect while the rendered content still grows.
   useEffect(() => {
-    const sessionIds = [currentSessionId, selectedSession?.id].filter(
-      (id): id is string => Boolean(id),
-    );
-    const hasActiveTurn = isLoading || sessionIds.some((id) => activeSessions?.has(id));
-    if (!autoScrollToBottom || !hasActiveTurn) return;
+    if (!autoScrollToBottom) return;
 
     const keepLatestVisible = () => {
       const container = scrollContainerRef.current;
@@ -1874,8 +1869,14 @@ const isNearBottom = useCallback(() => {
 
     keepLatestVisible();
     const timer = window.setInterval(keepLatestVisible, FOLLOW_BOTTOM_HEARTBEAT_MS);
-    return () => window.clearInterval(timer);
-  }, [activeSessions, autoScrollToBottom, currentSessionId, isLoading, selectedSession?.id, scrollToBottom]);
+    document.addEventListener('visibilitychange', keepLatestVisible);
+    window.addEventListener('focus', keepLatestVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', keepLatestVisible);
+      window.removeEventListener('focus', keepLatestVisible);
+    };
+  }, [autoScrollToBottom, scrollToBottom]);
 
   useEffect(() => {
     const container = scrollContainerRef.current;

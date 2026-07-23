@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -71,4 +71,32 @@ test('oversized JSONL records are skipped without losing later usage records', a
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+test('chat session guards are initialized before effects capture them', async () => {
+  const source = await readFile(
+    new URL('../src/components/chat/hooks/useChatSessionState.ts', import.meta.url),
+    'utf8',
+  );
+  const exemptionDeclaration = source.indexOf('const isSystemChangeExemptionValid = useCallback');
+  const exemptionUsage = source.indexOf('isSystemChangeExemptionValid(selectedSession?.id)');
+  const lengthRefDeclaration = source.indexOf('const prevSessionMessagesLengthRef = useRef(0)');
+  const lengthRefUsage = source.indexOf('prevSessionMessagesLengthRef.current');
+
+  assert.ok(exemptionDeclaration >= 0 && exemptionDeclaration < exemptionUsage);
+  assert.ok(lengthRefDeclaration >= 0 && lengthRefDeclaration < lengthRefUsage);
+});
+
+test('bottom-follow fallback depends on DOM geometry, not turn status', async () => {
+  const source = await readFile(
+    new URL('../src/components/chat/hooks/useChatSessionState.ts', import.meta.url),
+    'utf8',
+  );
+  const start = source.indexOf('const keepLatestVisible = () => {');
+  const end = source.indexOf('\n  }, [autoScrollToBottom, scrollToBottom]);', start);
+  const fallback = source.slice(start, end);
+
+  assert.ok(start >= 0 && end > start);
+  assert.match(fallback, /setInterval\(keepLatestVisible/);
+  assert.doesNotMatch(fallback, /hasActiveTurn|activeSessions/);
 });
