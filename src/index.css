@@ -1329,6 +1329,95 @@
   border-top: 1px solid rgba(0,217,255,0.90);
 }
 
+.chat-composer-content {
+  container-type: inline-size;
+  min-width: 0;
+}
+
+.chat-input-controls > * {
+  min-width: 0;
+}
+
+/* The composer can be narrow even on a desktop viewport when the project
+   sidebar and HUD are open, so adapt to its own width instead of the screen. */
+@container (max-width: 760px) {
+  .chat-input-controls {
+    flex-wrap: wrap !important;
+    justify-content: center;
+    column-gap: 0.3rem !important;
+    row-gap: 0.25rem !important;
+    margin-bottom: 0;
+  }
+
+  .chat-control-permission {
+    max-width: 10rem;
+    padding: 0.25rem 0.5rem !important;
+    font-size: 0.7rem !important;
+  }
+
+  .chat-control-permission > div {
+    min-width: 0;
+  }
+
+  .chat-control-provider select,
+  .chat-control-compact select {
+    max-width: 5.75rem !important;
+    padding: 0.25rem 1.25rem 0.25rem 0.45rem !important;
+    font-size: 0.7rem !important;
+  }
+
+  .chat-control-model {
+    flex-shrink: 1 !important;
+    max-width: 10rem !important;
+  }
+
+  .chat-control-model > div {
+    padding: 0.25rem 0.45rem !important;
+    font-size: 0.7rem !important;
+  }
+
+  .chat-token-usage {
+    gap: 0.2rem !important;
+    padding-inline: 0.1rem !important;
+    font-size: 0.68rem !important;
+  }
+
+  .chat-token-usage svg {
+    width: 40px;
+    height: 23px;
+  }
+
+  .chat-control-icon {
+    width: 1.75rem !important;
+    height: 1.75rem !important;
+  }
+}
+
+@container (max-width: 520px) {
+  .chat-control-permission {
+    max-width: 8.5rem;
+  }
+
+  .chat-control-model {
+    max-width: 8.75rem !important;
+  }
+
+  .tech-composer-box .chat-input-placeholder {
+    font-size: 0.875rem !important;
+    line-height: 1.35rem !important;
+  }
+}
+
+@media screen and (max-width: 1279px) {
+  .chat-composer-progress {
+    display: none;
+  }
+
+  .chat-composer-layout {
+    gap: 0;
+  }
+}
+
 .tech .tech-composer-wrapper {
   display: block;
   container-type: inline-size;

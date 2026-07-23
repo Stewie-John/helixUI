@@ -550,7 +550,8 @@ export default function ClaudeStatus({
   const { isConnected } = useWebSocket();
   const [elapsedTime, setElapsedTime] = useState(0);
   const [disconnectDismissed, setDisconnectDismissed] = useState(false);
-  // 延迟 3s 显示断连 banner——短暂抖动（典型重连 1-2s）完全不可见
+  // Normal reconnects finish within a few seconds. Keep those silent and only
+  // surface a warning when the connection is genuinely unavailable.
   const [showDisconnected, setShowDisconnected] = useState(false);
   const providerLabel = getProviderLabel(provider);
 
@@ -560,7 +561,7 @@ export default function ClaudeStatus({
       setShowDisconnected(false);
       return;
     }
-    const timer = setTimeout(() => setShowDisconnected(true), 3000);
+    const timer = setTimeout(() => setShowDisconnected(true), 10000);
     return () => clearTimeout(timer);
   }, [isConnected]);
 
@@ -603,14 +604,14 @@ export default function ClaudeStatus({
   // ── 断连警告 ────────────────────────────────────────────────────────────
   if (showDisconnected && !isConnected && !disconnectDismissed) {
     return (
-      <div className="w-full mb-3 sm:mb-6 animate-in slide-in-from-bottom duration-300">
-        <div className="flex items-center mx-auto bg-red-900/90 text-white rounded-xl shadow-lg px-3 py-2.5 sm:px-4 sm:py-3 border border-red-700/60 gap-3">
+      <div className="w-full mb-2 animate-in slide-in-from-bottom duration-300">
+        <div className="flex items-center mx-auto bg-red-900/90 text-white rounded-lg shadow-lg px-2.5 py-2 sm:px-3 border border-red-700/60 gap-2">
           <div className="flex-shrink-0">
-            <ClawdSprite state="error" size={56} />
+            <ClawdSprite state="error" size={36} />
           </div>
           <div className="flex-1 min-w-0">
             <div className="font-medium text-xs sm:text-sm">与服务器连接已断开</div>
-            <div className="text-red-300 text-xs mt-0.5">正在重连中，{providerLabel} 命令可能未发送成功，请稍候或刷新页面重试</div>
+            <div className="text-red-300 text-xs mt-0.5">正在重连，未确认的 {providerLabel} 命令会在连接恢复后自动重发</div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             {onAbort && (

@@ -141,11 +141,11 @@ export default function ChatInputControls({
   };
 
   return (
-    <div className="flex w-full items-center justify-center gap-1.5 sm:gap-3 flex-nowrap overflow-visible whitespace-nowrap pb-1 -mb-1">
+    <div className="chat-input-controls flex w-full items-center justify-center gap-1.5 sm:gap-3 flex-nowrap whitespace-nowrap pb-1 -mb-1">
       <button
         type="button"
         onClick={onModeSwitch}
-        className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-sm font-medium border transition-all duration-200 ${
+        className={`chat-control-permission px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-sm font-medium border transition-all duration-200 ${
           permissionMode === 'default'
             ? 'bg-muted/50 text-muted-foreground border-border/60 hover:bg-muted'
             : permissionMode === 'acceptEdits'
@@ -168,7 +168,7 @@ export default function ChatInputControls({
                     : 'bg-primary'
             }`}
           />
-          <span>
+          <span className="truncate">
             {permissionMode === 'default' && t('codex.modes.default')}
             {permissionMode === 'acceptEdits' && t('codex.modes.acceptEdits')}
             {permissionMode === 'bypassPermissions' && t('codex.modes.bypassPermissions')}
@@ -179,7 +179,7 @@ export default function ChatInputControls({
 
       {/* 模型选择下拉框 —— 在有消息的会话中也能切换模型 */}
       {setProvider && (
-        <div className="relative">
+        <div className="chat-control-provider relative">
           <select
             value={provider}
             onChange={(e) => handleProviderChange(e.target.value)}
@@ -204,7 +204,7 @@ export default function ChatInputControls({
         const selectedLabel =
           modelConfig.OPTIONS.find((o: { value: string; label: string }) => o.value === currentModel)?.label ?? currentModel;
         return (
-        <div className="relative inline-flex items-center shrink-0 max-w-[12.5rem] sm:max-w-[15rem]">
+        <div className="chat-control-model relative inline-flex items-center shrink-0 max-w-[12.5rem] sm:max-w-[15rem]">
           <div className="pointer-events-none flex items-center gap-1.5 pl-2.5 pr-2 py-1 sm:py-1.5 text-xs sm:text-sm font-medium bg-muted/50 border border-border/60 rounded-lg text-foreground w-full">
             <span className="truncate">{selectedLabel}</span>
             <svg className="w-3 h-3 shrink-0 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -227,7 +227,7 @@ export default function ChatInputControls({
 
       {provider === 'codex' && (
         <>
-          <div className="relative">
+          <div className="chat-control-compact relative">
             <select
               value={codexReasoningEffort || CODEX_REASONING_EFFORTS.DEFAULT}
               onChange={(e) => handleCodexReasoningEffortChange(e.target.value)}
@@ -243,7 +243,7 @@ export default function ChatInputControls({
             </svg>
           </div>
 
-          <div className="relative">
+          <div className="chat-control-compact relative">
             <select
               value={codexSpeed || CODEX_SPEED_OPTIONS.DEFAULT}
               onChange={(e) => handleCodexSpeedChange(e.target.value)}
@@ -284,7 +284,7 @@ export default function ChatInputControls({
       <button
         type="button"
         onClick={onToggleCommandMenu}
-        className="relative flex-none w-7 h-7 aspect-square sm:w-8 sm:h-8 text-muted-foreground hover:text-foreground rounded-lg flex items-center justify-center transition-colors hover:bg-accent/60"
+        className="chat-control-icon relative flex-none w-7 h-7 aspect-square sm:w-8 sm:h-8 text-muted-foreground hover:text-foreground rounded-lg flex items-center justify-center transition-colors hover:bg-accent/60"
         title={t('input.showAllCommands')}
       >
         <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -308,7 +308,7 @@ export default function ChatInputControls({
         <button
           type="button"
           onClick={onClearInput}
-          className="flex-none w-7 h-7 aspect-square sm:w-8 sm:h-8 bg-card hover:bg-accent/60 border border-border/50 rounded-lg flex items-center justify-center transition-all duration-200 group shadow-sm"
+          className="chat-control-icon flex-none w-7 h-7 aspect-square sm:w-8 sm:h-8 bg-card hover:bg-accent/60 border border-border/50 rounded-lg flex items-center justify-center transition-all duration-200 group shadow-sm"
           title={t('input.clearInput', { defaultValue: 'Clear input' })}
         >
           <svg
@@ -325,7 +325,7 @@ export default function ChatInputControls({
       {isUserScrolledUp && hasMessages && (
         <button
           onClick={onScrollToBottom}
-          className="flex-none w-7 h-7 aspect-square sm:w-8 sm:h-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-sm flex items-center justify-center transition-all duration-200 hover:scale-105"
+          className="chat-control-icon flex-none w-7 h-7 aspect-square sm:w-8 sm:h-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-sm flex items-center justify-center transition-all duration-200 hover:scale-105"
           title={t('input.scrollToBottom', { defaultValue: 'Scroll to bottom' })}
         >
           <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

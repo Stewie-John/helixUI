@@ -650,7 +650,12 @@ export function useChatRealtimeHandlers({
       if (typeof ackId === 'number') {
         setChatMessages((prev) => prev.map((m) =>
           m.clientTs === ackId && m.type === 'user'
-            ? { ...m, deliveryStatus: delivered ? 'delivered' : 'failed' }
+            ? {
+                ...m,
+                deliveryStatus: delivered ? 'delivered' : 'failed',
+                sendFailed: !delivered,
+                pending: delivered ? m.pending : false,
+              }
             : m
         ));
       }

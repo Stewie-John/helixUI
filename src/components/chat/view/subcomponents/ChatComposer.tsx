@@ -458,9 +458,9 @@ export default function ChatComposer({
 
   return (
     <div className={`tech-composer-panel p-2 sm:p-4 md:p-4 flex-shrink-0 pb-2 sm:pb-4 md:pb-6 ${mobileFloatingClass}`}>
-      <div className="flex items-end gap-3">
-        <SidebarProgress docked />
-        <div className="min-w-0 flex-1">
+      <div className="chat-composer-layout flex items-end gap-3">
+        <div className="chat-composer-progress"><SidebarProgress docked /></div>
+        <div className="chat-composer-content min-w-0 flex-1">
       <GoalStatusBar sessionId={sessionId} provider={String(provider)} isLoading={isLoading} />
       {/* 拖拽调高手柄 + 最小化按钮（移动端 + 桌面端均显示） */}
       {(

@@ -526,20 +526,9 @@ export function useChatSessionState({
     }
   }, [isLoading]);
 
-  // WS 断线时将未响应的 pending 消息标记为 sendFailed
-  useEffect(() => {
-    if (!ws) return;
-    const handleClose = () => {
-      setChatMessages(prev => {
-        if (!prev.some(m => m.pending)) return prev;
-        return prev.map(m =>
-          m.pending ? { ...m, pending: false, sendFailed: true } : m
-        );
-      });
-    };
-    ws.addEventListener('close', handleClose);
-    return () => ws.removeEventListener('close', handleClose);
-  }, [ws]);
+  // A brief socket reconnect does not mean the command was lost. WebSocketContext
+  // retains unacknowledged commands and replays them after reconnecting; only its
+  // acknowledgement timeout is allowed to mark a message as failed.
   const isLoadingSessionRef = useRef(false);
   const sessionLoadCountRef = useRef(0);
   const isLoadingMoreRef = useRef(false);

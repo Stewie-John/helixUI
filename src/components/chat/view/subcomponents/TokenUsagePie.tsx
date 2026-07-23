@@ -112,7 +112,7 @@ export default function TokenUsagePie({ used, total, resetKey, onRefresh, refres
       type="button"
       onClick={onRefresh}
       disabled={!onRefresh || refreshing}
-      className="tech-bare flex items-center gap-1.5 text-xs rounded-md px-1 py-0.5 transition-colors hover:bg-accent/60 disabled:cursor-default disabled:hover:bg-transparent"
+      className="chat-token-usage tech-bare flex items-center gap-1.5 text-xs rounded-md px-1 py-0.5 transition-colors hover:bg-accent/60 disabled:cursor-default disabled:hover:bg-transparent"
       title={`${used.toLocaleString()} / ${total.toLocaleString()} tokens${onRefresh ? ' - click to refresh' : ''}`}
     >
       {/* 仪表盘 SVG，高度裁切到半圆弧面 */}
