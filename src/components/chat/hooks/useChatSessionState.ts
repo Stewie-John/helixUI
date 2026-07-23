@@ -2026,12 +2026,12 @@ const isNearBottom = useCallback(() => {
     let timerId: ReturnType<typeof setTimeout> | null = null;
     let controller: AbortController | null = null;
 
-    const scheduleNextPoll = (delay = 6000) => {
+    function scheduleNextPoll(delay = 6000) {
       if (stopped) return;
       timerId = setTimeout(pollLatestPage, delay);
-    };
+    }
 
-    const pollLatestPage = async () => {
+    async function pollLatestPage() {
       if (stopped) return;
       if (document.visibilityState !== 'visible') {
         scheduleNextPoll(12000);
@@ -2069,7 +2069,7 @@ const isNearBottom = useCallback(() => {
         controller = null;
         scheduleNextPoll();
       }
-    };
+    }
 
     scheduleNextPoll(2000);
 

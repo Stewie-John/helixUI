@@ -141,3 +141,15 @@ test('page restoration and stale bundle handling never force an automatic reload
   assert.doesNotMatch(entry, /pageshow[\s\S]*location\.reload/);
   assert.doesNotMatch(recovery, /location\.(?:replace|reload)/);
 });
+
+test('background polling uses hoisted declarations without a temporal dead zone', async () => {
+  const source = await readFile(
+    new URL('../src/components/chat/hooks/useChatSessionState.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(source, /function scheduleNextPoll\(delay = 6000\)/);
+  assert.match(source, /async function pollLatestPage\(\)/);
+  assert.doesNotMatch(source, /const scheduleNextPoll\s*=/);
+  assert.doesNotMatch(source, /const pollLatestPage\s*=/);
+});
