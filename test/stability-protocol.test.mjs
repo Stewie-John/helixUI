@@ -153,3 +153,14 @@ test('background polling uses hoisted declarations without a temporal dead zone'
   assert.doesNotMatch(source, /const scheduleNextPoll\s*=/);
   assert.doesNotMatch(source, /const pollLatestPage\s*=/);
 });
+
+test('command acknowledgements only call hoisted realtime lifecycle helpers', async () => {
+  const source = await readFile(
+    new URL('../src/components/chat/hooks/useChatRealtimeHandlers.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(source, /function collectSessionIds\(\.\.\.sessionIds:/);
+  assert.match(source, /function markLiveTurnActivity\(sessionId\?:/);
+  assert.doesNotMatch(source, /const collectSessionIds\s*=/);
+});

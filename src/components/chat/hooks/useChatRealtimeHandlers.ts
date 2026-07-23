@@ -737,22 +737,23 @@ export function useChatRealtimeHandlers({
         latestMessage.type === 'codex-error' ||
             latestMessage.type === 'gemini-error')));
 
-    const handleBackgroundLifecycle = (sessionId?: string) => {
+    function handleBackgroundLifecycle(sessionId?: string) {
       if (!sessionId) {
         return;
       }
       onSessionInactive?.(sessionId);
       onSessionNotProcessing?.(sessionId);
-    };
+    }
 
-    const collectSessionIds = (...sessionIds: Array<string | null | undefined>) =>
-      Array.from(
+    function collectSessionIds(...sessionIds: Array<string | null | undefined>) {
+      return Array.from(
         new Set(
           sessionIds.filter((sessionId): sessionId is string => typeof sessionId === 'string' && sessionId.length > 0),
         ),
       );
+    }
 
-    const clearLoadingIndicators = () => {
+    function clearLoadingIndicators() {
       // 每轮结束前把真实 token 用量累加到 session 级别持久化计数
       const sid = realTokensSessionIdRef.current || currentSessionId;
       if (sid) {
@@ -785,15 +786,15 @@ export function useChatRealtimeHandlers({
       }
       // 本轮结束：清空压缩会话别名，避免跨轮/跨会话残留导致误归属
       compactSessionAliasRef.current.clear();
-    };
+    }
 
-    const markSessionsAsCompleted = (...sessionIds: Array<string | null | undefined>) => {
+    function markSessionsAsCompleted(...sessionIds: Array<string | null | undefined>) {
       const normalizedSessionIds = collectSessionIds(...sessionIds);
       normalizedSessionIds.forEach((sessionId) => {
         onSessionInactive?.(sessionId);
         onSessionNotProcessing?.(sessionId);
       });
-    };
+    }
 
     function markLiveTurnActivity(sessionId?: string | null) {
       const incomingTurnClientTs = Number((latestMessage as any).turnClientTs || 0);
