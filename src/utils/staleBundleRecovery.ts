@@ -27,12 +27,11 @@ export const scheduleStaleBundleRecovery = (error: unknown) => {
     // Recovery still works when sessionStorage is unavailable.
   }
 
-  window.setTimeout(() => {
-    const url = new URL(window.location.href);
-    url.searchParams.set(RECOVERY_QUERY, String(Date.now()));
-    window.location.replace(url.toString());
-  }, 0);
-  return true;
+  // WebSocket reconnects recover transient outages without replacing the page.
+  // An automatic full-page navigation here can discard an optimistic user
+  // message and make two turns appear joined. Keep the marker for diagnostics,
+  // but let the nearest error boundary render a stable retry surface.
+  return false;
 };
 
 export const removeStaleBundleRecoveryQuery = () => {

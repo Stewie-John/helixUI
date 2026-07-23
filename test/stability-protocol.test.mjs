@@ -100,3 +100,44 @@ test('bottom-follow fallback depends on DOM geometry, not turn status', async ()
   assert.match(fallback, /setInterval\(keepLatestVisible/);
   assert.doesNotMatch(fallback, /hasActiveTurn|activeSessions/);
 });
+
+test('the visible chat tail retains the latest user turn boundary', async () => {
+  const source = await readFile(
+    new URL('../src/components/chat/hooks/useChatSessionState.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(source, /getTailWithLatestUserBoundary\(chatMessages, visibleMessageCount\)/);
+  assert.match(source, /return \[messages\[latestUserIndex\], \.\.\.messages\.slice\(tailStart\)\]/);
+});
+
+test('streaming cache writes are throttled and user boundaries persist immediately', async () => {
+  const source = await readFile(
+    new URL('../src/components/chat/hooks/useChatSessionState.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(source, /latestUserKey !== lastPersistedUserKeyRef\.current/);
+  assert.match(source, /if \(!chatStorageTimerRef\.current\)/);
+  const persistenceStart = source.indexOf(
+    'const cacheSnapshot = getTailWithLatestUserBoundary(chatMessages, 50)',
+  );
+  const persistenceEnd = source.indexOf(
+    '}, [chatMessages, isMobile',
+    persistenceStart,
+  );
+  assert.doesNotMatch(
+    source.slice(persistenceStart, persistenceEnd),
+    /clearTimeout\(chatStorageTimerRef\.current\)/,
+  );
+});
+
+test('page restoration and stale bundle handling never force an automatic reload', async () => {
+  const [entry, recovery] = await Promise.all([
+    readFile(new URL('../src/main.jsx', import.meta.url), 'utf8'),
+    readFile(new URL('../src/utils/staleBundleRecovery.ts', import.meta.url), 'utf8'),
+  ]);
+
+  assert.doesNotMatch(entry, /pageshow[\s\S]*location\.reload/);
+  assert.doesNotMatch(recovery, /location\.(?:replace|reload)/);
+});

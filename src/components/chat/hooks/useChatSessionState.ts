@@ -215,6 +215,24 @@ const deduplicateChatMessages = (messages: ChatMessage[]): ChatMessage[] => {
   });
 };
 
+const getTailWithLatestUserBoundary = (messages: ChatMessage[], limit: number): ChatMessage[] => {
+  if (!Number.isFinite(limit) || messages.length <= limit) return messages;
+  const tailStart = Math.max(0, messages.length - limit);
+  let latestUserIndex = -1;
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index].type === 'user') {
+      latestUserIndex = index;
+      break;
+    }
+  }
+  if (latestUserIndex < 0 || latestUserIndex >= tailStart) {
+    return messages.slice(tailStart);
+  }
+  // A long-running turn can emit more tool records than the render window. Keep
+  // its user boundary without rendering the entire generated tail.
+  return [messages[latestUserIndex], ...messages.slice(tailStart)];
+};
+
 const serverCoversLocalMessage = (serverMessage: ChatMessage, localMessage: ChatMessage) => {
   const serverId = getMessageStableId(serverMessage);
   const localId = getMessageStableId(localMessage);
@@ -461,6 +479,8 @@ export function useChatSessionState({
   const previousChatMessagesLengthRef = useRef(chatMessages.length);
   const chatStorageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const chatStorageIdleRef = useRef<number | null>(null);
+  const pendingChatStorageRef = useRef<{ key: string; messages: ChatMessage[] } | null>(null);
+  const lastPersistedUserKeyRef = useRef<string | null>(null);
   const hasPendingUserMessage = useMemo(
     () => chatMessages.some((message) => message.type === 'user' && message.pending),
     [chatMessages],
@@ -1619,28 +1639,49 @@ const isNearBottom = useCallback(() => {
 
   useEffect(() => {
     const storageKey = getVersionedChatMessagesStorageKey(selectedProject?.name, selectedSession?.id);
-    if (storageKey && chatMessages.length > 0) {
-      if (chatStorageTimerRef.current) {
-        clearTimeout(chatStorageTimerRef.current);
-      }
-      if (chatStorageIdleRef.current !== null && 'cancelIdleCallback' in window) {
-        window.cancelIdleCallback(chatStorageIdleRef.current);
-        chatStorageIdleRef.current = null;
-      }
-      const cacheSnapshot = chatMessages.slice(-50);
+    if (!storageKey || chatMessages.length === 0) return;
+
+    const cacheSnapshot = getTailWithLatestUserBoundary(chatMessages, 50);
+    pendingChatStorageRef.current = { key: storageKey, messages: cacheSnapshot };
+    const latestUser = [...chatMessages].reverse().find((message) => message.type === 'user');
+    const latestUserKey = latestUser ? getLocalUserMessageKey(latestUser) : null;
+
+    const persistLatestSnapshot = () => {
+      const pending = pendingChatStorageRef.current;
+      if (!pending) return;
+      safeLocalStorage.setItem(
+        pending.key,
+        serializeChatMessagesForStorage(pending.messages),
+      );
+    };
+
+    // A submitted/steered user message is the turn boundary. Persist it
+    // synchronously so a disconnect or navigation cannot visually swallow it.
+    if (latestUserKey && latestUserKey !== lastPersistedUserKeyRef.current) {
+      lastPersistedUserKeyRef.current = latestUserKey;
+      persistLatestSnapshot();
+    }
+
+    // Do not debounce by cancelling on every streamed token. That postponed the
+    // cache write until the whole turn ended. Keep one throttle timer and let it
+    // persist the newest snapshot when it fires.
+    if (!chatStorageTimerRef.current) {
       chatStorageTimerRef.current = setTimeout(() => {
         const persistSnapshot = () => {
-          safeLocalStorage.setItem(storageKey, serializeChatMessagesForStorage(cacheSnapshot));
+          persistLatestSnapshot();
           chatStorageIdleRef.current = null;
         };
         if ('requestIdleCallback' in window) {
-          chatStorageIdleRef.current = window.requestIdleCallback(persistSnapshot, { timeout: 2500 });
+          chatStorageIdleRef.current = window.requestIdleCallback(persistSnapshot, { timeout: 1000 });
         } else {
           persistSnapshot();
         }
         chatStorageTimerRef.current = null;
       }, isMobile ? 1500 : 600);
     }
+  }, [chatMessages, isMobile, selectedProject?.name, selectedSession?.id]);
+
+  useEffect(() => {
     return () => {
       if (chatStorageTimerRef.current) {
         clearTimeout(chatStorageTimerRef.current);
@@ -1650,8 +1691,15 @@ const isNearBottom = useCallback(() => {
         window.cancelIdleCallback(chatStorageIdleRef.current);
         chatStorageIdleRef.current = null;
       }
+      const pending = pendingChatStorageRef.current;
+      if (pending) {
+        safeLocalStorage.setItem(
+          pending.key,
+          serializeChatMessagesForStorage(pending.messages),
+        );
+      }
     };
-  }, [chatMessages, isMobile, selectedProject?.name, selectedSession?.id]);
+  }, []);
 
   useEffect(() => {
     if (!selectedProject || !selectedSession?.id || selectedSession.id.startsWith('new-session-')) {
@@ -1740,10 +1788,7 @@ const isNearBottom = useCallback(() => {
   }, [chatMessages.length, isUserScrolledUp, visibleMessageCount]);
 
   const visibleMessages = useMemo(() => {
-    if (chatMessages.length <= visibleMessageCount) {
-      return chatMessages;
-    }
-    return chatMessages.slice(-visibleMessageCount);
+    return getTailWithLatestUserBoundary(chatMessages, visibleMessageCount);
   }, [chatMessages, visibleMessageCount]);
 
   // 记录上一次滚动位置（仅在非自动滚动模式时）
