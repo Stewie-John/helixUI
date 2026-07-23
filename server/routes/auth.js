@@ -2,7 +2,7 @@ import express from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { userDb } from '../database/db.js';
-import { generateToken, authenticateToken, JWT_SECRET } from '../middleware/auth.js';
+import { generateToken, authenticateToken, sendInvalidAuthToken, JWT_SECRET } from '../middleware/auth.js';
 
 const router = express.Router();
 const AUTH_RATE_LIMIT_WINDOW_MS = Number.parseInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS || '', 10) || 15 * 60 * 1000;
@@ -88,19 +88,19 @@ router.post('/register', authRateLimit, async (req, res) => {
       const authHeader = req.headers['authorization'];
       const token = authHeader && authHeader.split(' ')[1];
       if (!token) {
-        return res.status(401).json({ error: 'Authentication required' });
+        return sendInvalidAuthToken(res, 'Authentication required');
       }
 
       let decoded;
       try {
         decoded = jwt.verify(token, JWT_SECRET);
       } catch {
-        return res.status(401).json({ error: 'Invalid token' });
+        return sendInvalidAuthToken(res, 'Invalid token');
       }
 
       const adminUser = userDb.getUserById(decoded.userId);
       if (!adminUser || Number(decoded.tokenVersion ?? 0) !== Number(adminUser.token_version ?? 0)) {
-        return res.status(401).json({ error: 'Session expired. Please sign in again.' });
+        return sendInvalidAuthToken(res, 'Session expired. Please sign in again.');
       }
 
       // 仅 id=1（首位账号 = admin）可创建新账号

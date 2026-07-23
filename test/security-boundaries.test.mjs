@@ -16,6 +16,25 @@ process.env.DATABASE_PATH = path.join(temporaryRoot, 'data', 'auth.db');
 const { validateWorkspacePath, WORKSPACES_ROOT } = await import('../server/routes/projects.js');
 const { resolvePathWithinRoot } = await import('../server/utils/path-security.js');
 const { isAllowedWebSocketOrigin } = await import('../server/utils/request-origin.js');
+const { authenticateToken } = await import('../server/middleware/auth.js');
+
+const runAuthentication = async (authorization) => {
+  const headers = new Map();
+  let statusCode = 200;
+  let body = null;
+  let nextCalled = false;
+  const req = {
+    headers: authorization ? { authorization } : {},
+    originalUrl: '/api/projects',
+  };
+  const res = {
+    setHeader(name, value) { headers.set(String(name).toLowerCase(), String(value)); },
+    status(code) { statusCode = code; return this; },
+    json(value) { body = value; return this; },
+  };
+  await authenticateToken(req, res, () => { nextCalled = true; });
+  return { headers, statusCode, body, nextCalled };
+};
 
 after(async () => {
   await fs.rm(temporaryRoot, { recursive: true, force: true });
@@ -84,4 +103,12 @@ test('WebSocket origin allowlists support trusted reverse proxies', () => {
   };
   assert.equal(isAllowedWebSocketOrigin(request, { allowedOrigins: 'https://public.example.test' }), true);
   assert.equal(isAllowedWebSocketOrigin({ headers: {} }, { allowMissingOrigin: true }), true);
+});
+
+test('invalid bearer tokens are explicitly marked without conflating normal forbidden responses', async () => {
+  const result = await runAuthentication('Bearer invalid.jwt.value');
+  assert.equal(result.nextCalled, false);
+  assert.equal(result.statusCode, 401);
+  assert.equal(result.headers.get('x-auth-token-invalid'), '1');
+  assert.equal(result.body?.code, 'AUTH_TOKEN_INVALID');
 });

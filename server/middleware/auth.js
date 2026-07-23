@@ -55,6 +55,11 @@ const resolveJwtSecret = () => {
 const JWT_SECRET = resolveJwtSecret();
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
+const sendInvalidAuthToken = (res, error) => {
+  res.setHeader('X-Auth-Token-Invalid', '1');
+  return res.status(401).json({ error, code: 'AUTH_TOKEN_INVALID' });
+};
+
 // Optional API key middleware
 const validateApiKey = (req, res, next) => {
   // Skip API key validation if not configured
@@ -91,7 +96,7 @@ const authenticateToken = async (req, res, next) => {
   let token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
   if (!token) {
-    return res.status(401).json({ error: 'Access denied. No token provided.' });
+    return sendInvalidAuthToken(res, 'Access denied. No token provided.');
   }
 
   try {
@@ -100,10 +105,10 @@ const authenticateToken = async (req, res, next) => {
     // Verify user still exists and is active
     const user = userDb.getUserById(decoded.userId);
     if (!user) {
-      return res.status(401).json({ error: 'Invalid token. User not found.' });
+      return sendInvalidAuthToken(res, 'Invalid token. User not found.');
     }
     if (Number(decoded.tokenVersion ?? 0) !== Number(user.token_version ?? 0)) {
-      return res.status(401).json({ error: 'Session expired. Please sign in again.' });
+      return sendInvalidAuthToken(res, 'Session expired. Please sign in again.');
     }
 
     req.user = user;
@@ -123,7 +128,7 @@ const authenticateToken = async (req, res, next) => {
     next();
   } catch (error) {
     console.error('Token verification error:', error);
-    return res.status(403).json({ error: 'Invalid token' });
+    return sendInvalidAuthToken(res, 'Invalid token');
   }
 };
 
@@ -181,6 +186,7 @@ const authenticateWebSocket = (token) => {
 export {
   validateApiKey,
   authenticateToken,
+  sendInvalidAuthToken,
   generateToken,
   authenticateWebSocket,
   JWT_SECRET

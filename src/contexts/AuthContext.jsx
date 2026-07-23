@@ -99,9 +99,14 @@ export const AuthProvider = ({ children }) => {
           // onboardingStatus 不阻塞首屏渲染，后台异步加载
           checkOnboardingStatus();
         } else {
-          localStorage.removeItem('auth-token');
-          setToken(null);
-          setUser(null);
+          const invalidToken = userResponse.headers.get('x-auth-token-invalid') === '1';
+          if (invalidToken) {
+            localStorage.removeItem('auth-token');
+            setToken(null);
+            setUser(null);
+          } else {
+            throw new Error(`Authentication service returned ${userResponse.status}`);
+          }
         }
       } else {
         // 无 token 时只需检查 setup 状态

@@ -31,7 +31,10 @@ export const authenticatedFetch = async (url, options = {}) => {
     },
   });
 
-  if (!IS_PLATFORM && token && (response.status === 401 || response.status === 403)) {
+  // A normal 403 means the signed-in user lacks permission for this operation;
+  // it must never erase a valid login. The auth middleware marks only actual
+  // bearer-token failures with this response header.
+  if (!IS_PLATFORM && token && response.headers.get('x-auth-token-invalid') === '1') {
     notifyInvalidAuthToken();
   }
 
