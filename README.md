@@ -70,7 +70,8 @@ JWT_SECRET=replace-with-64-random-hex-characters
 CREDENTIALS_ENCRYPTION_KEY=replace-with-64-random-hex-characters
 ```
 
-See [.env.example](.env.example) and [deployment guidance](docs/DEPLOYMENT.md).
+See [.env.example](.env.example), [deployment guidance](docs/DEPLOYMENT.md),
+and the hardened [public deployment guide](docs/PUBLIC_DEPLOYMENT.md).
 
 ## Development
 

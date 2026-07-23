@@ -15,7 +15,10 @@ process.env.DATABASE_PATH = path.join(temporaryRoot, 'data', 'auth.db');
 
 const { validateWorkspacePath, WORKSPACES_ROOT } = await import('../server/routes/projects.js');
 const { resolvePathWithinRoot } = await import('../server/utils/path-security.js');
-const { isAllowedWebSocketOrigin } = await import('../server/utils/request-origin.js');
+const {
+  isAllowedRequestHost,
+  isAllowedWebSocketOrigin,
+} = await import('../server/utils/request-origin.js');
 const { authenticateToken } = await import('../server/middleware/auth.js');
 
 const runAuthentication = async (authorization) => {
@@ -103,6 +106,31 @@ test('WebSocket origin allowlists support trusted reverse proxies', () => {
   };
   assert.equal(isAllowedWebSocketOrigin(request, { allowedOrigins: 'https://public.example.test' }), true);
   assert.equal(isAllowedWebSocketOrigin({ headers: {} }, { allowMissingOrigin: true }), true);
+});
+
+test('public hostname allowlists reject host-header confusion', () => {
+  assert.equal(
+    isAllowedRequestHost(
+      { headers: { host: 'app.example.test' } },
+      'app.example.test',
+    ),
+    true,
+  );
+  assert.equal(
+    isAllowedRequestHost(
+      { headers: { host: '127.0.0.1:3001', 'x-forwarded-host': 'evil.example.test' } },
+      'app.example.test',
+    ),
+    false,
+  );
+  assert.equal(
+    isAllowedRequestHost(
+      { headers: { host: 'evil.example.test', 'x-forwarded-host': 'app.example.test' } },
+      'app.example.test',
+    ),
+    false,
+  );
+  assert.equal(isAllowedRequestHost({ headers: { host: 'anything.test' } }, ''), true);
 });
 
 test('invalid bearer tokens are explicitly marked without conflating normal forbidden responses', async () => {

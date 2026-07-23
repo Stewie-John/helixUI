@@ -2,9 +2,30 @@ function splitOrigins(value = '') {
   return String(value).split(',').map((origin) => origin.trim()).filter(Boolean);
 }
 
+function normalizeHostname(value = '') {
+  const candidate = String(value).trim().toLowerCase();
+  if (!candidate) return '';
+
+  try {
+    const parsed = new URL(candidate.includes('://') ? candidate : `http://${candidate}`);
+    return parsed.hostname.toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
 function getRequestHost(request) {
-  const forwardedHost = String(request.headers?.['x-forwarded-host'] || '').split(',')[0].trim();
-  return forwardedHost || String(request.headers?.host || '').trim();
+  return String(request.headers?.host || '').trim();
+}
+
+function isAllowedRequestHost(request, allowedHosts = '') {
+  const configuredHosts = splitOrigins(allowedHosts)
+    .map(normalizeHostname)
+    .filter(Boolean);
+  if (configuredHosts.length === 0) return true;
+
+  const requestHostname = normalizeHostname(getRequestHost(request));
+  return Boolean(requestHostname && configuredHosts.includes(requestHostname));
 }
 
 function isAllowedWebSocketOrigin(request, options = {}) {
@@ -29,4 +50,10 @@ function isAllowedWebSocketOrigin(request, options = {}) {
   return Boolean(requestHost && parsed.host === requestHost);
 }
 
-export { getRequestHost, isAllowedWebSocketOrigin, splitOrigins };
+export {
+  getRequestHost,
+  isAllowedRequestHost,
+  isAllowedWebSocketOrigin,
+  normalizeHostname,
+  splitOrigins,
+};

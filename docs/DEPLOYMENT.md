@@ -31,6 +31,9 @@ WORKSPACES_ROOT=/srv/helix/workspaces
 CLOUDCLI_DATA_DIR=/srv/helix/data
 JWT_SECRET=replace-with-64-random-hex-characters
 CREDENTIALS_ENCRYPTION_KEY=replace-with-64-random-hex-characters
+TRUST_PROXY=loopback
+ALLOWED_HOSTS=helix.example.com
+ENABLE_HSTS=true
 ```
 
 For a trusted team sharing one workspace boundary, set `ENABLE_MULTI_USER=true`.
@@ -40,6 +43,11 @@ per trust boundary instead.
 The proxy must forward `/api/*`, static files, and WebSocket upgrades on `/ws`.
 Set request-body and idle timeouts high enough for image prompts and long agent
 turns.
+
+For an Internet-reachable deployment, follow
+[Public deployment](PUBLIC_DEPLOYMENT.md). It keeps the origin on loopback and
+places an identity-aware access layer in front of both HTTP and WebSocket
+traffic.
 
 ## Upgrades and rollback
 

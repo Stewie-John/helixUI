@@ -104,7 +104,7 @@ import { IS_PLATFORM } from './constants/config.js';
 import { TtlIdempotencyCache } from './utils/ttl-idempotency.js';
 import { filterClientInstanceTargets } from './utils/client-routing.js';
 import { resolvePathWithinRoot } from './utils/path-security.js';
-import { isAllowedWebSocketOrigin } from './utils/request-origin.js';
+import { isAllowedRequestHost, isAllowedWebSocketOrigin } from './utils/request-origin.js';
 
 const VALID_PROVIDERS = ['claude', 'codex', 'cursor', 'gemini'];
 
@@ -337,6 +337,17 @@ async function setupProjectsWatcher() {
 
 
 const app = express();
+const trustProxy = String(process.env.TRUST_PROXY || '').trim().toLowerCase();
+if (trustProxy) {
+    const allowedTrustProxyModes = new Set(['loopback', 'linklocal', 'uniquelocal']);
+    if (!allowedTrustProxyModes.has(trustProxy)) {
+        throw new Error(
+            'TRUST_PROXY must be loopback, linklocal, or uniquelocal. ' +
+            'Never trust arbitrary forwarded headers on a public deployment.'
+        );
+    }
+    app.set('trust proxy', trustProxy);
+}
 const server = http.createServer(app);
 let isDrainingForRestart = false;
 let isRestartRequested = false;
@@ -701,6 +712,13 @@ app.locals.wss = wss;
 
 // 请求计时中间件：记录所有超过 500ms 的慢请求
 app.use((req, res, next) => {
+    if (isAllowedRequestHost(req, process.env.ALLOWED_HOSTS)) {
+        return next();
+    }
+    return res.status(421).json({ error: 'Misdirected request' });
+});
+
+app.use((req, res, next) => {
     const start = Date.now();
     res.on('finish', () => {
         const duration = Date.now() - start;
@@ -717,6 +735,9 @@ app.use((req, res, next) => {
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
     res.setHeader('Permissions-Policy', 'camera=(), geolocation=(), payment=()');
+    if (process.env.ENABLE_HSTS === 'true') {
+        res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    }
     res.setHeader(
         'Content-Security-Policy',
         [
