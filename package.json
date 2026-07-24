@@ -16,7 +16,9 @@
     "shared/",
     "dist/",
     "scripts/fix-node-pty.js",
-    "README.md"
+    "README.md",
+    "README.zh-CN.md",
+    "docs/assets/"
   ],
   "homepage": "https://github.com/StewartJohn0/helixui",
   "repository": {

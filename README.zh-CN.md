@@ -1,7 +1,8 @@
 <div align="center">
-  <img src="public/logo.svg" alt="HelixUI" width="72" height="72">
+  <img src="public/logo.svg" alt="HelixUI" width="80" height="80">
   <h1>HelixUI</h1>
-  <p>面向 AI 编程代理的自托管网页工作区。</p>
+  <p><strong>面向长时间 AI 编程工作的可观测控制台。</strong></p>
+  <p>把持久代理、实时 Goal、终端级会话和运行状态 HUD 放进同一个自托管工作区。</p>
 </div>
 
 <p align="center">
@@ -12,32 +13,71 @@
   <a href="./README.md">English</a>
 </p>
 
-HelixUI 将 Claude Code、OpenAI Codex、Cursor CLI、Gemini CLI 和兼容的自定义
-服务整合到一个响应式浏览器工作区中。它面向希望保留终端级代理工作流，同时需要
-持久会话、文件、Git、用量统计和跨设备访问的用户。
+<p align="center">
+  <img src="docs/assets/operations-console.png" alt="HelixUI Goal、用量、额度、实时工作与系统资源面板" width="100%">
+</p>
+<p align="center"><sub>Goal、用量、额度、实时工作和系统面板；图中数值均为合成演示数据。</sub></p>
 
-## 主要能力
+HelixUI 不只是把代理 CLI 套进浏览器。它是为同时运行多个 AI 编程会话、需要从
+不同设备回来继续工作，并且关心“谁正在运行、何时结束、占用了多少上下文、主机
+是否过载”的用户设计的可视化运行工作区。
 
-- **持久代理对话**：流式输出、断线恢复、后续消息排队、会话整理、上下文用量和
-  Goal 历史。
-- **真实 Shell 与 Terminal**：基于 PTY，支持重连和同一会话内延续。
-- **工作区工具**：文件浏览、模糊搜索、拖放、编辑、Diff、Git 和项目导航。
-- **多代理接入**：Claude Code、OpenAI Codex、Cursor、Gemini 以及
-  OpenAI 兼容接口。
-- **运行状态面板**：额度、Token、账号用量、系统资源和当前工作状态。
-- **完整交互体验**：桌面与移动端布局、多语言、语音转文字、三套外观和 PWA。
-- **发布安全门禁**：隐私扫描、路径边界、WebSocket 来源、认证边界、全新安装和
-  生产依赖审计。
+它接入 Claude Code、OpenAI Codex、Cursor CLI、Gemini CLI 和兼容的自定义服务，
+同时保留底层终端原生工作方式。
 
-## 环境要求
+## 它有什么不同
 
-- Node.js 22 或更高版本
-- Linux 或 macOS；完整 PTY 功能需要类 Unix 系统
-- 至少安装并登录一个受支持的代理 CLI
+### 不只看最终答案，还能看见工作过程
+
+- 持久的**实时工作状态栏**在任务开始时立即唤醒，并能跨刷新和断线恢复。
+- **Goal 模式**集中展示当前目标、已用时间、Token 活动、暂停/停止、完成状态和
+  当前对话的 Goal 历史。
+- 工具调用保持紧凑可读；长命令、日志、测试输出和错误会折叠，但不会被吞掉。
+- 每轮完成后保留明确的结束标志，长会话中不需要猜测本轮是否已经结束。
+
+### 把额度、Token 和系统容量作为一等信息
+
+- **Quota 与上下文 HUD**显示额度、重置时间、上下文占用和当前会话 Token 方向。
+- **输入与模型用量**将键入字符和官方模型 input/output token 事件分开统计，并
+  提供账号总览及日历热图。
+- **系统监控**展示 RAM、CPU、GPU/VRAM，并按账号聚合内存，能够发现同一账号
+  同时启动大量小进程导致的资源异常。
+- 各面板独立更新，不依靠刷新整个页面，也不会让 Chat 内容反复重排。
+
+### 保留终端连续性，同时获得完整图形界面
+
+- Chat、Shell 和真实 PTY Terminal 会重连到原会话，切换页面或重新打开标签后
+  不会从空终端开始。
+- 工作进行时的后续消息具备明确的排队和 Interrupt 语义，并按浏览器标签和会话
+  隔离。
+- 文件、模糊搜索、拖放、编辑、Diff 和 Git 始终限制在当前工作区。
+- 桌面、小屏、移动端、多语言、语音转文字和 PWA 共享一致的会话状态。
+
+## 工作区
+
+<p align="center">
+  <img src="docs/assets/workspace-overview.png" alt="HelixUI DNA 科技主题 Chat 工作区" width="760">
+</p>
+
+可选的科技主题使用 DNA 双螺旋场景、网格化界面、紧凑 HUD 和终端式彩色输出。
+同时提供两套更克制的传统工作主题。视觉风格不会改变会话行为或模型数据。
+
+## 能力总览
+
+| 范围 | 包含能力 |
+| --- | --- |
+| 代理 | Claude Code、OpenAI Codex、Cursor CLI、Gemini CLI、OpenAI 兼容服务 |
+| 对话 | 流式输出、断线恢复、后续消息队列、稳定轮次边界、会话文件夹 |
+| 长任务 | 实时工作状态、Goal 模式、Goal 历史、暂停/停止、完成标志 |
+| 可观测性 | Quota、上下文、官方 Token、键入字符、账号用量、系统资源 |
+| 工作区 | Files、模糊搜索、拖放、编辑器、Diff、Git、项目级导航 |
+| 终端 | 真实 PTY、重连缓冲、会话延续、Ctrl+C 与交互程序 |
+| 访问 | 内置账号、管理员控制、用户数据边界、响应式/PWA |
+| 体验 | 三套主题、多语言、语音转文字、公式渲染、紧凑工具输出 |
 
 ## 快速开始
 
-### 从 npm 安装
+### npm 安装
 
 ```bash
 npm install -g @stewiejohn/helixui
@@ -55,13 +95,15 @@ npm run build
 npm run server
 ```
 
-打开 `http://127.0.0.1:3001`。空数据库中创建的第一个账号会成为管理员，
-随后公开注册立即关闭。运行数据默认保存在源码目录之外的 `~/.cloudcli`，
-工作区默认限制在 `~/CloudCLIWorkspaces`。
+打开 `http://127.0.0.1:3001`。空数据库中创建的第一个账号会成为管理员，随后
+公开注册立即关闭。运行数据保存在源码目录外的 `~/.cloudcli`，工作区默认为
+`~/CloudCLIWorkspaces`。
 
-## 支持的代理
+## 环境与代理
 
-只需安装并登录准备使用的工具：
+- Node.js 22 或更高版本
+- 完整 PTY 功能需要 Linux 或 macOS
+- 至少安装并登录一个受支持的代理 CLI
 
 | 服务 | 本机依赖 |
 | --- | --- |
@@ -71,18 +113,16 @@ npm run server
 | Google | Gemini CLI |
 | 兼容 API | 服务地址与 API Key |
 
-代理凭据和会话保留在运行 HelixUI 的机器上。
+代理凭据和原生会话保留在运行 HelixUI 的机器上。
 
 ## 安全边界
 
-HelixUI 会以启动它的系统账号权限执行命令。除非服务受到 HTTPS 反向代理、身份
-认证和防火墙保护，否则应保持默认的本机监听。网页账号不能替代操作系统沙箱；
-互不信任的用户必须使用不同容器、虚拟机、Unix 账号或独立 HelixUI 实例。
+HelixUI 会以启动它的 Unix 账号权限执行命令。除非服务受到 HTTPS 反向代理、
+身份认证和防火墙保护，否则应保持默认的本机监听。网页账号不能替代操作系统
+沙箱；互不信任的用户必须使用不同容器、虚拟机、Unix 账号或 HelixUI 实例。
 
-任何网络部署前都应阅读 [安全策略](SECURITY.md) 和
+网络部署前请阅读 [安全策略](SECURITY.md) 和
 [公网部署指南](docs/PUBLIC_DEPLOYMENT.md)。
-
-常用生产配置包括：
 
 ```env
 HOST=127.0.0.1
@@ -96,6 +136,12 @@ JWT_SECRET=替换为64位随机十六进制字符串
 CREDENTIALS_ENCRYPTION_KEY=替换为另一段64位随机十六进制字符串
 ```
 
+## 发布质量
+
+`npm run release:check` 会扫描私有部署信息和秘密，执行断线重连、幂等性与安全边界
+测试，完成类型检查和生产构建，在全新 HOME 下安装 npm 包并验证运行数据隔离，
+最后审计生产依赖。
+
 ## 文档
 
 | 文档 | 内容 |
@@ -105,37 +151,18 @@ CREDENTIALS_ENCRYPTION_KEY=替换为另一段64位随机十六进制字符串
 | [公网部署](docs/PUBLIC_DEPLOYMENT.md) | 公网威胁模型与加固 |
 | [安全策略](SECURITY.md) | 信任边界和漏洞报告 |
 | [支持说明](SUPPORT.md) | 安全提交 Bug 和诊断信息 |
-| [参与贡献](CONTRIBUTING.md) | 开发和 Pull Request 流程 |
-| [版本规则](docs/VERSIONING.md) | 独立的语义化版本体系 |
-| [发布流程](docs/RELEASING.md) | GitHub 与 npm 维护者流程 |
+| [参与贡献](CONTRIBUTING.md) | 开发与 Pull Request 流程 |
+| [版本规则](docs/VERSIONING.md) | 独立语义化版本体系 |
+| [发布流程](docs/RELEASING.md) | GitHub 与 npm 维护流程 |
 
-## 开发与验证
-
-```bash
-npm ci --include=dev
-npm run dev
-```
-
-提交前执行：
-
-```bash
-npm run verify
-```
-
-维护者发布前执行 `npm run release:check`。它会扫描私有部署信息和秘密，运行稳定性
-与安全边界测试，完成类型检查和生产构建，在全新 HOME 下安装并启动 npm 包验证
-运行数据隔离，最后审计用户实际获得的生产依赖。
-
-## 版本与来源
+## 版本、来源与许可
 
 HelixUI 使用新的 npm 包 `@stewiejohn/helixui`，独立稳定版本从 `1.0.0`
-重新开始。历史包 `@stewiejohn/helix-ui@1.23.0` 仅属于兼容阶段版本线，
-详见 [版本规则](docs/VERSIONING.md)。
+开始。历史包 `@stewiejohn/helix-ui@1.23.0` 属于兼容阶段版本线，详见
+[版本规则](docs/VERSIONING.md)。
 
 本项目基于 [siteboon/claudecodeui](https://github.com/siteboon/claudecodeui)
 开发，保留并感谢上游提供的原始服务器架构、会话管理和多代理集成框架。
-
-## 许可证
 
 项目按照 [AGPL-3.0-or-later](LICENSE) 发布。通过网络向用户提供服务时，必须按
 许可证要求向用户提供对应源代码。
