@@ -4,8 +4,9 @@ All notable changes to HelixUI are documented here.
 
 ## Unreleased
 
-The next release starts HelixUI's independent calendar-versioned release line.
-The planned first version is `2026.7.0`.
+The next release starts HelixUI's independent semantic-versioned release line.
+The planned first stable version is `1.0.0`, published under the independent
+npm package `@stewiejohn/helixui`.
 
 ### Reliability
 
@@ -37,11 +38,12 @@ The planned first version is `2026.7.0`.
 - Publish the npm package with public access and provenance from the protected
   GitHub Actions release workflow.
 
-## Legacy 1.23.0 - 2026-07-22
+## Legacy package release 1.23.0 - 2026-07-22
 
-Pre-independent compatibility release using the inherited upstream version
-sequence. HelixUI releases after this point use calendar versions such as
-`2026.7.0`; the two sequences are not related.
+Pre-independent compatibility release published as
+`@stewiejohn/helix-ui@1.23.0` using an inherited upstream version sequence.
+Independent HelixUI releases use the new `@stewiejohn/helixui` package and
+restart at `1.0.0`.
 
 - Added reconnect-safe command acknowledgement and replay deduplication.
 - Stabilized streaming chat, active-turn recovery, terminal persistence, and shell mirroring.

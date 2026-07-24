@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/StewartJohn0/helixui/actions/workflows/ci.yml"><img src="https://github.com/StewartJohn0/helixui/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://www.npmjs.com/package/@stewiejohn/helix-ui"><img src="https://img.shields.io/npm/v/@stewiejohn/helix-ui" alt="npm 版本"></a>
+  <a href="https://www.npmjs.com/package/@stewiejohn/helixui"><img src="https://img.shields.io/npm/v/@stewiejohn/helixui" alt="npm 版本"></a>
   <a href="package.json"><img src="https://img.shields.io/badge/node-%3E%3D22-339933" alt="Node.js 22 或更高版本"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="AGPL-3.0-or-later"></a>
   <a href="./README.md">English</a>
@@ -40,7 +40,7 @@ HelixUI 将 Claude Code、OpenAI Codex、Cursor CLI、Gemini CLI 和兼容的自
 ### 从 npm 安装
 
 ```bash
-npm install -g @stewiejohn/helix-ui
+npm install -g @stewiejohn/helixui
 helix-ui
 ```
 
@@ -106,7 +106,7 @@ CREDENTIALS_ENCRYPTION_KEY=替换为另一段64位随机十六进制字符串
 | [安全策略](SECURITY.md) | 信任边界和漏洞报告 |
 | [支持说明](SUPPORT.md) | 安全提交 Bug 和诊断信息 |
 | [参与贡献](CONTRIBUTING.md) | 开发和 Pull Request 流程 |
-| [版本规则](docs/VERSIONING.md) | 独立的 `YYYY.M.PATCH` 版本体系 |
+| [版本规则](docs/VERSIONING.md) | 独立的语义化版本体系 |
 | [发布流程](docs/RELEASING.md) | GitHub 与 npm 维护者流程 |
 
 ## 开发与验证
@@ -128,8 +128,9 @@ npm run verify
 
 ## 版本与来源
 
-HelixUI 使用 `2026.7.0` 这类日历版本，与上游项目的版本序列完全独立。历史 npm
-版本 `1.23.0` 仅是兼容阶段版本，详见 [版本规则](docs/VERSIONING.md)。
+HelixUI 使用新的 npm 包 `@stewiejohn/helixui`，独立稳定版本从 `1.0.0`
+重新开始。历史包 `@stewiejohn/helix-ui@1.23.0` 仅属于兼容阶段版本线，
+详见 [版本规则](docs/VERSIONING.md)。
 
 本项目基于 [siteboon/claudecodeui](https://github.com/siteboon/claudecodeui)
 开发，保留并感谢上游提供的原始服务器架构、会话管理和多代理集成框架。

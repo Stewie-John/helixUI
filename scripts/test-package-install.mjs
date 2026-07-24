@@ -261,7 +261,7 @@ try {
     throw new Error(`Authenticated image snapshot failed with ${snapshotResponse.status}`);
   }
   await snapshotResponse.arrayBuffer();
-  const installedPackageRoot = path.join(consumerRoot, 'node_modules', '@stewiejohn', 'helix-ui');
+  const installedPackageRoot = path.join(consumerRoot, 'node_modules', '@stewiejohn', 'helixui');
   const paths = {
     database: fs.existsSync(path.join(dataRoot, 'auth.db')),
     projectCache: await waitForPath(path.join(dataRoot, 'projects-cache.json')),

@@ -1,29 +1,25 @@
 # Versioning
 
-HelixUI uses calendar versioning independently of the upstream project from
-which it was originally forked.
+HelixUI uses its own semantic-version sequence independently of the upstream
+project from which it was originally forked.
 
 Versions have the form:
 
 ```text
-YYYY.M.PATCH
+MAJOR.MINOR.PATCH
 ```
 
-- `YYYY` is the release year.
-- `M` is the release month without a leading zero.
-- `PATCH` starts at `0` for the first release in that month and increments for
-  compatible follow-up releases.
+- `MAJOR` changes for incompatible behavior or migration requirements.
+- `MINOR` changes for backward-compatible features.
+- `PATCH` changes for backward-compatible fixes.
 
-Examples:
+The first independent stable release is `1.0.0` under the npm package:
 
-- `2026.7.0`: first July 2026 release
-- `2026.7.1`: compatible July 2026 correction
-- `2026.8.0`: first August 2026 release
+```text
+@stewiejohn/helixui
+```
 
-Breaking changes are called out explicitly in the changelog and release notes.
-Calendar versions are valid semantic versions and can be published through npm.
-
-The historical `1.23.0` package was a pre-independent compatibility release
-whose number followed the inherited codebase. It is not the predecessor of a
-similarly numbered upstream release and is not used as the basis for future
-HelixUI version numbers.
+The historical package `@stewiejohn/helix-ui@1.23.0` belongs to a
+pre-independent compatibility line that inherited another project's version
+number. It is not part of HelixUI's new sequence and will be deprecated in npm
+with an upgrade notice pointing to the independent package.

@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/StewartJohn0/helixui/actions/workflows/ci.yml"><img src="https://github.com/StewartJohn0/helixui/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://www.npmjs.com/package/@stewiejohn/helix-ui"><img src="https://img.shields.io/npm/v/@stewiejohn/helix-ui" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/@stewiejohn/helixui"><img src="https://img.shields.io/npm/v/@stewiejohn/helixui" alt="npm version"></a>
   <a href="package.json"><img src="https://img.shields.io/badge/node-%3E%3D22-339933" alt="Node.js 22 or newer"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="AGPL-3.0-or-later"></a>
   <a href="./README.zh-CN.md">中文</a>
@@ -46,7 +46,7 @@ files, Git tools, usage visibility, or access from another device.
 ### Install from npm
 
 ```bash
-npm install -g @stewiejohn/helix-ui
+npm install -g @stewiejohn/helixui
 helix-ui
 ```
 
@@ -116,7 +116,7 @@ CREDENTIALS_ENCRYPTION_KEY=replace-with-64-random-hex-characters
 | [Security policy](SECURITY.md) | Trust boundaries and vulnerability reporting |
 | [Support](SUPPORT.md) | Safe bug reports and diagnostic information |
 | [Contributing](CONTRIBUTING.md) | Development and pull-request workflow |
-| [Versioning](docs/VERSIONING.md) | Independent `YYYY.M.PATCH` release scheme |
+| [Versioning](docs/VERSIONING.md) | Independent semantic-version scheme |
 | [Releasing](docs/RELEASING.md) | GitHub and npm maintainer procedure |
 
 ## Development
@@ -139,9 +139,10 @@ clean home, verifies runtime isolation, and audits production dependencies.
 
 ## Versioning
 
-HelixUI uses calendar versions such as `2026.7.0`, independent from the
-upstream project's version sequence. The historical npm version `1.23.0` is a
-legacy compatibility release. See [VERSIONING.md](docs/VERSIONING.md).
+HelixUI restarts at `1.0.0` under the independent npm package
+`@stewiejohn/helixui`. The historical `@stewiejohn/helix-ui@1.23.0` package
+belongs to a legacy compatibility line. See
+[VERSIONING.md](docs/VERSIONING.md).
 
 ## Acknowledgments
 

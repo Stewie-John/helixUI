@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Exact CalVer release (for example 2026.7.0)
+        description: Exact semantic version (for example 1.0.0)
         required: true
-        default: 2026.7.0
+        default: 1.0.0
 
 concurrency:
   group: release
@@ -34,7 +34,7 @@ jobs:
           RELEASE_VERSION: ${{ inputs.version }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          node -e 'if (!/^[0-9]{4}\.(?:[1-9]|1[0-2])\.[0-9]+$/.test(process.env.RELEASE_VERSION)) process.exit(1)'
+          node -e 'if (!/^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$/.test(process.env.RELEASE_VERSION)) process.exit(1)'
           test -n "$NODE_AUTH_TOKEN"
           npm whoami
       - run: npm ci --include=dev
