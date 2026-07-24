@@ -637,7 +637,7 @@ export default function ClaudeStatus({
 
   // ── Processing 状态条 ────────────────────────────────────────────────────
   return (
-    <div className="w-full mb-3 sm:mb-6 animate-in slide-in-from-bottom duration-300">
+    <div className="w-full mb-3 sm:mb-6">
       {/* 主状态栏：无边框、透明背景，螃蟹与终端文字直接融入页面背景 */}
       <div className="flex items-center mx-auto px-1 py-0.5 gap-3 sm:gap-4">
         {/* 螃蟹工作动画（sprite）—— 放大，无框，可点击进「螃蟹之家」 */}

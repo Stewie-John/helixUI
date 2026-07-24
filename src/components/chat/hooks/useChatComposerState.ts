@@ -862,6 +862,13 @@ export function useChatComposerState({
         deliveryStatus: 'sending',  // 等待后端 command-ack 回执；超时→failed，回执到达→delivered
       };
 
+      // These three surfaces are one local transaction: conversation bubble,
+      // work status, and sidebar activity. Mark the known view id active before
+      // waiting for command ACK/turn.started or a project-directory rescan.
+      if (statusSessionId) {
+        onSessionActive?.(statusSessionId);
+        onSessionProcessing?.(statusSessionId);
+      }
       setChatMessages((previous) => [...previous, userMessage]);
       setIsLoading(true);
       setCanAbortSession(true);

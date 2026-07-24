@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/StewartJohn0/helixui/security/advisories/new
+    about: Report exploitable vulnerabilities privately.
+  - name: Deployment security guide
+    url: https://github.com/StewartJohn0/helixui/blob/main/docs/PUBLIC_DEPLOYMENT.md
+    about: Review the trust model before exposing HelixUI to a network.

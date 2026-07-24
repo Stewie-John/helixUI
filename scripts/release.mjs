@@ -30,6 +30,7 @@ if (isDryRun) {
     '--ci',
     '--git.push=false',
     '--git.requireUpstream=false',
+    '--git.requireCleanWorkingDir=false',
     '--npm.publish=false',
     '--github.release=false',
   );

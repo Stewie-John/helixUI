@@ -1,0 +1,74 @@
+name: Bug report
+description: Report a reproducible HelixUI problem
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Remove private prompts, credentials, hostnames, workspace paths, and session data before attaching logs or screenshots.
+  - type: input
+    id: version
+    attributes:
+      label: HelixUI version
+      description: The version shown in the application or package metadata.
+      placeholder: 2026.7.0
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: Installation
+      options:
+        - npm package
+        - source checkout
+        - container or third-party package
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Node.js version, browser, and relevant agent CLI version.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. Open ...
+        2. Select ...
+        3. Send ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs
+      description: Do not include secrets, prompts, private file paths, or session contents.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues.
+          required: true
+        - label: I removed private deployment and session data.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true

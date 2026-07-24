@@ -572,6 +572,7 @@ export function useChatSessionState({
   const chatMessagesLengthRef = useRef(chatMessages.length);
   const visibleMessageCountRef = useRef(initialVisibleMessages);
   const pendingInitialScrollRef = useRef(true);
+  const initialScrollDeadlineRef = useRef(Date.now() + 1800);
   const messagesOffsetRef = useRef(0);
   const scrollPositionRef = useRef({ height: 0, top: 0 });
   const loadAllFinishedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1158,6 +1159,7 @@ const isNearBottom = useCallback(() => {
 
   useEffect(() => {
     pendingInitialScrollRef.current = true;
+    initialScrollDeadlineRef.current = Date.now() + 1800;
     // 切换 session 时先锁定历史加载，防止初始渲染时 scrollTop=0 误触发。
     // 待 scrollToBottom 执行后（见下方 effect）再解锁。
     topLoadLockRef.current = true;
@@ -1181,20 +1183,35 @@ const isNearBottom = useCallback(() => {
     }
 
     if (chatMessages.length === 0) {
-      pendingInitialScrollRef.current = false;
       return;
     }
 
-    pendingInitialScrollRef.current = false;
-    setTimeout(() => {
-      // 初始加载不强制覆盖用户已发起的上滑操作
-      if (!isUserScrolledUpRef.current && !userScrollIntentRef.current) {
-        scrollToBottom();
+    // Initial history conversion is not the end of layout: markdown, collapsed
+    // turns, fonts and images can change the content height afterward. Keep
+    // correcting the geometry for a short settling window. A real upward gesture
+    // cancels immediately, preserving the explicit history-reading lock.
+    const settleAtBottom = () => {
+      if (isUserScrolledUpRef.current || userScrollIntentRef.current) {
+        pendingInitialScrollRef.current = false;
+        topLoadLockRef.current = false;
+        return;
       }
-      // scrollToBottom 执行后解锁：此时 scrollTop 已为最大值，
-      // handleScroll 检测到 scrolledNearTop=false 也会自动清锁，但提前清更保险
-      topLoadLockRef.current = false;
-    }, 200);
+      scrollToBottom();
+      if (Date.now() >= initialScrollDeadlineRef.current) {
+        pendingInitialScrollRef.current = false;
+        topLoadLockRef.current = false;
+      }
+    };
+    settleAtBottom();
+    const timer = window.setInterval(settleAtBottom, 80);
+    const stopTimer = window.setTimeout(() => {
+      settleAtBottom();
+      window.clearInterval(timer);
+    }, Math.max(0, initialScrollDeadlineRef.current - Date.now()) + 100);
+    return () => {
+      window.clearInterval(timer);
+      window.clearTimeout(stopTimer);
+    };
   }, [chatMessages.length, isLoadingSessionMessages, scrollToBottom]);
 
   useEffect(() => {

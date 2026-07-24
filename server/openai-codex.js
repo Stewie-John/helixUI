@@ -17,7 +17,11 @@ import { Codex } from '@openai/codex-sdk';
 import { promises as fs } from 'fs';
 import os from 'os';
 import path from 'path';
-import { CodexAppServerSession, normalizeItem } from './codex-app-server.js';
+import {
+  CodexAppServerSession,
+  isFinalAssistantMessageForTurn,
+  normalizeItem,
+} from './codex-app-server.js';
 import { codexRuntimeAliasesDb, codexTranscriptDb } from './database/db.js';
 import { getCodexSessionMessages, resolveCodexRuntimeThreadId } from './projects.js';
 
@@ -31,6 +35,26 @@ const CODEX_CONTEXT_WINDOW = Number(process.env.CODEX_CONTEXT_WINDOW || 1050000)
 // unchanged instead of being silently downgraded.
 const CODEX_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh', 'max', 'ultra']);
 const CODEX_SPEED_TIERS = new Set(['default', 'fast']);
+const CODEX_AUTO_COMPACT_RECOVERY_RATIO = Math.min(
+  0.95,
+  Math.max(0.5, Number(process.env.CODEX_AUTO_COMPACT_RECOVERY_RATIO || 0.85)),
+);
+const CODEX_NO_FINAL_RECOVERY_MAX = Math.min(
+  48,
+  Math.max(1, Number(process.env.CODEX_NO_FINAL_RECOVERY_MAX || 48)),
+);
+const CODEX_NO_FINAL_RECOVERY_MAX_MS = Math.min(
+  24 * 60 * 60 * 1000,
+  Math.max(5 * 60 * 1000, Number(process.env.CODEX_NO_FINAL_RECOVERY_MAX_MS || 6 * 60 * 60 * 1000)),
+);
+const CODEX_NO_FINAL_IDLE_RECOVERY_MAX = Math.min(
+  6,
+  Math.max(1, Number(process.env.CODEX_NO_FINAL_IDLE_RECOVERY_MAX || 3)),
+);
+const CODEX_AUTO_COMPACT_RECOVERY_MAX = Math.min(
+  8,
+  Math.max(1, Number(process.env.CODEX_AUTO_COMPACT_RECOVERY_MAX || 4)),
+);
 const CODEX_APP_SERVER_IDLE_MS = Number(process.env.CODEX_APP_SERVER_IDLE_MS || 10 * 60 * 1000);
 const CODEX_APP_SERVER_POOL_MAX = Math.max(1, Number(process.env.CODEX_APP_SERVER_POOL_MAX || 8));
 
@@ -252,6 +276,9 @@ function getCodexStatusMessage(event) {
   if (event.type === 'turn.started') {
     return 'Reasoning';
   }
+  if (event.type === 'turn.recovering') {
+    return 'Continuing task';
+  }
 
   const item = event.item;
   if (!item || !item.type) {
@@ -277,6 +304,8 @@ function getCodexStatusMessage(event) {
         : 'Web search';
     case 'todo_list':
       return 'Updating todos';
+    case 'context_compaction':
+      return 'Compacting context';
     default:
       return `Working: ${item.type}`;
   }
@@ -543,6 +572,8 @@ async function queryCodexLegacy(command, options = {}, ws) {
     billingOutputTokens: 0,
     startedAt: new Date().toISOString(),
     exact: false,
+    latestContextInputTokens: 0,
+    latestContextWindow: CODEX_CONTEXT_WINDOW,
     outputTokensByItem: new Map(),
   };
   const requestTurnClientTs = Number(clientTs || Date.now());
@@ -773,6 +804,33 @@ function appServerInput(input) {
     : { type: 'text', text: item.text || '' });
 }
 
+function buildAutomaticTurnRecoveryInput({
+  attempt,
+  compacted,
+  hadProductiveActivity,
+  queuedInputs = [],
+}) {
+  const lines = [
+    '<codex_internal_context source="automatic_turn_recovery">',
+    `The app-server ended the preceding turn without a final answer. This is automatic continuation ${attempt}.`,
+    compacted
+      ? 'The thread was compacted before this continuation.'
+      : 'Continue in the same thread from the current workspace and tool state.',
+    hadProductiveActivity
+      ? 'The preceding turn was still making progress. If it yielded a long-running command, resume or poll that existing command instead of launching a duplicate.'
+      : 'The preceding turn did not expose a final answer. Re-evaluate the current task and continue it.',
+    'Do not repeat completed work. Keep working until there is a genuine final answer or a concrete blocking error.',
+  ];
+  if (queuedInputs.length > 0) {
+    lines.push('The user also sent the following follow-up message(s) while the turn boundary was being recovered:');
+    queuedInputs.forEach((entry, index) => {
+      lines.push(`<user_follow_up index="${index + 1}">`, entry.text, '</user_follow_up>');
+    });
+  }
+  lines.push('</codex_internal_context>');
+  return [{ type: 'text', text: lines.join('\n') }];
+}
+
 async function buildRecoveryInput(sessionId, currentInput) {
   // Recovery only uses the last 12 conversational messages. A bounded request
   // avoids parsing and materializing an entire multi-hundred-megabyte rollout.
@@ -845,6 +903,7 @@ async function queryCodexAppServer(command, options = {}, ws) {
   const requestTurnClientTs = Number(clientTs || turnKey);
   const deltaBuffers = new Map();
   const finalAssistantMessages = new Map();
+  let toolActivitySequence = 0;
   const usageEstimate = {
     // Do not present the typed prompt length as model input. App-server sends
     // the authoritative invocation usage once the model has consumed context.
@@ -894,6 +953,11 @@ async function queryCodexAppServer(command, options = {}, ws) {
     runtimeThreadId = resolvedThreadId;
     if (sessionId && needsFreshRoot) {
       codexRuntimeAliasesDb.set(sessionId, resolvedThreadId);
+    } else if (!sessionId && requestViewSessionId && requestViewSessionId !== resolvedThreadId) {
+      // A compact/provider-handoff continuation has an existing visible
+      // conversation but a new physical Codex thread. Persist that relationship
+      // server-side so future commands can prove that differing IDs are valid.
+      codexRuntimeAliasesDb.set(requestViewSessionId, resolvedThreadId);
     }
     const runtimeInput = needsFreshRoot
       ? await buildRecoveryInput(currentSessionId, codexInput.input)
@@ -919,6 +983,8 @@ async function queryCodexAppServer(command, options = {}, ws) {
       viewSessionId: requestViewSessionId,
       startedAt: usageEstimate.startedAt,
       latestClientTs: requestTurnClientTs,
+      recoveryPending: false,
+      pendingSteerInputs: [],
     });
 
     if (!sessionId) {
@@ -935,7 +1001,7 @@ async function queryCodexAppServer(command, options = {}, ws) {
     // drops after accepting it, never replay the user prompt through the
     // legacy SDK, which could charge the same turn twice.
     turnStarted = true;
-    const completion = await appSession.runTurn({
+    const runTurnOptions = {
       input: appServerInput(runtimeInput),
       cwd: workingDirectory,
       model,
@@ -944,15 +1010,28 @@ async function queryCodexAppServer(command, options = {}, ws) {
       // The thread-level setting is inherited by subsequent turns.
       sandboxPolicy: undefined,
       approvalPolicy: undefined,
-    }, async (message) => {
+    };
+    const handleAppServerNotification = async (message) => {
       const params = message.params || {};
       if (message.method === 'item/started' || message.method === 'item/updated' || message.method === 'item/completed') {
         const eventType = message.method.replace('/', '.');
         const item = normalizeItem(params.item);
-        if (item?.type === 'agent_message' && item.text?.trim()) {
-          finalAssistantMessages.set(params.item?.id || item.id || 'agent-message', item.text);
+        const itemId = params.item?.id || item?.id || 'agent-message';
+        if (
+          item?.type
+          && !['agent_message', 'reasoning', 'context_compaction'].includes(item.type)
+        ) {
+          toolActivitySequence += 1;
         }
-        const event = { type: eventType, item, itemId: params.item?.id || item?.id };
+        if (isFinalAssistantMessageForTurn(
+          message,
+          appSession.threadId,
+          appSession.activeTurnId,
+        )) {
+          const finalText = item.text?.trim() ? item.text : deltaBuffers.get(itemId);
+          if (finalText?.trim()) finalAssistantMessages.set(itemId, finalText);
+        }
+        const event = { type: eventType, item, itemId };
         updateCodexUsageEstimate(usageEstimate, event);
         const activeSession = activeCodexSessions.get(currentSessionId);
         const statusText = getCodexStatusMessage(event);
@@ -970,7 +1049,6 @@ async function queryCodexAppServer(command, options = {}, ws) {
         const itemId = params.itemId || 'codex-agent-message';
         const nextText = `${deltaBuffers.get(itemId) || ''}${params.delta || ''}`;
         deltaBuffers.set(itemId, nextText);
-        finalAssistantMessages.set(itemId, nextText);
         const event = { type: 'item.updated', itemId, item: { id: itemId, type: 'agent_message', text: nextText } };
         updateCodexUsageEstimate(usageEstimate, event);
         sendCodexStatus(ws, currentSessionId, event, usageEstimate, requestViewSessionId);
@@ -1002,6 +1080,10 @@ async function queryCodexAppServer(command, options = {}, ws) {
         const totalInputTokens = Number(threadTotal.inputTokens || 0);
         const totalCachedInputTokens = Number(threadTotal.cachedInputTokens || 0);
         const totalOutputTokens = Number(threadTotal.outputTokens || 0);
+        usageEstimate.latestContextInputTokens = lastInputTokens;
+        usageEstimate.latestContextWindow = Number(
+          params.tokenUsage?.modelContextWindow || CODEX_CONTEXT_WINDOW,
+        );
 
         // `last` includes the history sent to one model invocation, while
         // `total` is cumulative for the thread. Subtract the pre-turn baseline
@@ -1122,12 +1204,144 @@ async function queryCodexAppServer(command, options = {}, ws) {
           });
         }
       }
-    });
+    };
 
-    if (completion?.turn?.status === 'failed') {
+    const activeSession = activeCodexSessions.get(currentSessionId);
+    const recoveryStartedAt = Date.now();
+    let completion = null;
+    let nextTurnOptions = runTurnOptions;
+    let noFinalRecoveryAttempts = 0;
+    let idleNoFinalTurns = 0;
+    let compactionCount = 0;
+    let recoveryFailureReason = null;
+    let completedWithFinal = false;
+
+    while (activeSession?.status !== 'aborted') {
+      const finalCountBeforeTurn = finalAssistantMessages.size;
+      const toolActivityBeforeTurn = toolActivitySequence;
+      const runStartedAt = Date.now();
+      activeSession.recoveryPending = false;
+      completion = await appSession.runTurn(nextTurnOptions, handleAppServerNotification);
+      activeSession.recoveryPending = true;
+
+      const completionStatus = String(completion?.turn?.status || '').toLowerCase();
+      const turnFailed = completionStatus === 'failed';
+      const turnAborted = ['aborted', 'cancelled', 'canceled', 'interrupted'].includes(completionStatus)
+        || activeSession.status === 'aborted';
+      const producedFinal = finalAssistantMessages.size > finalCountBeforeTurn;
+
+      if (turnFailed || turnAborted) {
+        activeSession.recoveryPending = false;
+        break;
+      }
+      const queuedInputs = Array.isArray(activeSession.pendingSteerInputs)
+        ? activeSession.pendingSteerInputs.splice(0)
+        : [];
+      if (producedFinal && queuedInputs.length === 0) {
+        completedWithFinal = true;
+        activeSession.recoveryPending = false;
+        break;
+      }
+
+      const runDurationMs = Date.now() - runStartedAt;
+      const hadProductiveActivity = (
+        toolActivitySequence > toolActivityBeforeTurn
+        || runDurationMs >= 30 * 1000
+        || queuedInputs.length > 0
+      );
+      idleNoFinalTurns = hadProductiveActivity ? 0 : idleNoFinalTurns + 1;
+
+      if (noFinalRecoveryAttempts >= CODEX_NO_FINAL_RECOVERY_MAX) {
+        recoveryFailureReason = `automatic continuation reached ${CODEX_NO_FINAL_RECOVERY_MAX} attempts`;
+        activeSession.recoveryPending = false;
+        break;
+      }
+      if (Date.now() - recoveryStartedAt >= CODEX_NO_FINAL_RECOVERY_MAX_MS) {
+        recoveryFailureReason = 'automatic continuation reached its time limit';
+        activeSession.recoveryPending = false;
+        break;
+      }
+      if (idleNoFinalTurns > CODEX_NO_FINAL_IDLE_RECOVERY_MAX) {
+        recoveryFailureReason = `automatic continuation stopped after ${CODEX_NO_FINAL_IDLE_RECOVERY_MAX} idle turns`;
+        activeSession.recoveryPending = false;
+        break;
+      }
+
+      let compacted = false;
+      const contextWindow = Math.max(
+        1,
+        Number(usageEstimate.latestContextWindow || CODEX_CONTEXT_WINDOW),
+      );
+      const contextRatio = Number(usageEstimate.latestContextInputTokens || 0) / contextWindow;
+      if (
+        contextRatio >= CODEX_AUTO_COMPACT_RECOVERY_RATIO
+        && compactionCount < CODEX_AUTO_COMPACT_RECOVERY_MAX
+      ) {
+        const compactionEvent = {
+          type: 'item.started',
+          itemId: `auto-context-compaction-${turnKey}-${compactionCount + 1}`,
+          item: {
+            id: `auto-context-compaction-${turnKey}-${compactionCount + 1}`,
+            type: 'context_compaction',
+          },
+        };
+        activeSession.statusText = 'Compacting context';
+        activeSession.lastActivityAt = new Date().toISOString();
+        sendCodexStatus(ws, currentSessionId, compactionEvent, usageEstimate, requestViewSessionId);
+        await appSession.compactThread(handleAppServerNotification);
+        compactionCount += 1;
+        compacted = true;
+        usageEstimate.latestContextInputTokens = 0;
+      }
+
+      if (activeSession.status === 'aborted') {
+        activeSession.recoveryPending = false;
+        break;
+      }
+
+      noFinalRecoveryAttempts += 1;
+      activeSession.statusText = 'Continuing task';
+      activeSession.lastActivityAt = new Date().toISOString();
+      sendCodexStatus(
+        ws,
+        currentSessionId,
+        { type: 'turn.recovering' },
+        usageEstimate,
+        requestViewSessionId,
+      );
+      console.warn(
+        `[Codex app-server] Turn ended without a final answer; continuing `
+        + `${currentSessionId} (attempt ${noFinalRecoveryAttempts}/${CODEX_NO_FINAL_RECOVERY_MAX}, `
+        + `toolActivity=${hadProductiveActivity}, compacted=${compacted})`,
+      );
+      deltaBuffers.clear();
+      nextTurnOptions = {
+        ...runTurnOptions,
+        input: buildAutomaticTurnRecoveryInput({
+          attempt: noFinalRecoveryAttempts,
+          compacted,
+          hadProductiveActivity,
+          queuedInputs,
+        }),
+      };
+    }
+
+    if (String(completion?.turn?.status || '').toLowerCase() === 'failed') {
       const error = completion.turn.error?.message || 'Codex turn failed';
       codexTranscriptDb.record(currentSessionId, `error:${turnKey}`, 'error', error);
       sendForView({ type: 'codex-error', error, sessionId: currentSessionId, newSessionRequestId: newSessionRequestId || null });
+    } else if (activeSession?.status === 'aborted') {
+      // The interrupt route emits the user-visible aborted state.
+    } else if (!completedWithFinal) {
+      const detail = recoveryFailureReason ? ` (${recoveryFailureReason})` : '';
+      const error = `Codex could not produce a final response after automatic recovery${detail}.`;
+      codexTranscriptDb.record(currentSessionId, `error:${turnKey}`, 'error', error);
+      sendForView({
+        type: 'codex-error',
+        error,
+        sessionId: currentSessionId,
+        newSessionRequestId: newSessionRequestId || null,
+      });
     } else {
       for (const [itemId, text] of finalAssistantMessages) {
         codexTranscriptDb.record(
@@ -1143,7 +1357,9 @@ async function queryCodexAppServer(command, options = {}, ws) {
     }
   } catch (error) {
     if (currentSessionId && activeCodexSessions.has(currentSessionId)) {
-      activeCodexSessions.get(currentSessionId).status = 'completed';
+      const session = activeCodexSessions.get(currentSessionId);
+      session.status = session.status === 'aborted' ? 'aborted' : 'completed';
+      session.recoveryPending = false;
     }
     error.appServerTurnStarted = turnStarted;
     if (currentSessionId) {
@@ -1158,7 +1374,9 @@ async function queryCodexAppServer(command, options = {}, ws) {
   } finally {
     if (codexInput.tempDir) await fs.rm(codexInput.tempDir, { recursive: true, force: true }).catch(() => {});
     if (currentSessionId && activeCodexSessions.has(currentSessionId)) {
-      activeCodexSessions.get(currentSessionId).status = 'completed';
+      const session = activeCodexSessions.get(currentSessionId);
+      session.status = session.status === 'aborted' ? 'aborted' : 'completed';
+      session.recoveryPending = false;
     }
     if (appSession) appSession.lastUsedAt = Date.now();
   }
@@ -1233,10 +1451,14 @@ function resolveActiveCodexSession(sessionId) {
 
 function isCodexSessionHealthy(session) {
   if (!session || session.status !== 'running') return false;
-  // app-server is intentionally long-lived and can remain healthy after its turn
-  // completes. Native sessions need both a live process and an active turn.
+  // A no-final recovery has a short boundary between app-server turns. Keep the
+  // logical task active during that boundary so status polling and graceful
+  // restart checks cannot close the healthy app-server before continuation.
   return !session.appServer
-    || (session.appServer.isAlive() && session.appServer.hasActiveTurn());
+    || (
+      session.appServer.isAlive()
+      && (session.appServer.hasActiveTurn() || session.recoveryPending === true)
+    );
 }
 
 function clearStaleCodexSession(entryId, session, ...aliases) {
@@ -1261,35 +1483,63 @@ function clearStaleCodexSession(entryId, session, ...aliases) {
   console.warn(`[Codex] Cleared stale active session ${entryId}: app-server is not writable`);
 }
 
+function recordCodexSteerInput(session, entryId, sessionId, steerText, clientTs) {
+  session.latestClientTs = Math.max(Number(session.latestClientTs || 0), Number(clientTs || 0));
+  const addedInputTokens = estimateTokenCount(steerText);
+  if (session.usageEstimate && addedInputTokens > 0) {
+    session.usageEstimate.inputTokens = Number(session.usageEstimate.inputTokens || 0) + addedInputTokens;
+    session.usageEstimate.billingInputTokens = Math.max(
+      Number(session.usageEstimate.billingInputTokens || 0),
+      session.usageEstimate.inputTokens,
+    );
+  }
+  codexTranscriptDb.record(
+    session.logicalSessionId || entryId || sessionId,
+    `user:steer:${clientTs}`,
+    'user',
+    steerText,
+    new Date(clientTs).toISOString(),
+  );
+}
+
+function queueCodexSteerInput(session, entryId, sessionId, steerText, clientTs) {
+  if (!Array.isArray(session.pendingSteerInputs)) session.pendingSteerInputs = [];
+  session.pendingSteerInputs.push({ text: steerText, clientTs: Number(clientTs || Date.now()) });
+  session.recoveryPending = true;
+  session.statusText = 'Continuing task';
+  session.lastActivityAt = new Date().toISOString();
+  recordCodexSteerInput(session, entryId, sessionId, steerText, clientTs);
+}
+
 export async function steerCodexSession(sessionId, message, clientTs = Date.now()) {
   const resolved = resolveActiveCodexSession(sessionId);
   const session = resolved?.session;
   if (!session || session.status !== 'running' || !session.appServer) return false;
 
+  const steerText = String(message || '');
+  if (session.recoveryPending && !session.appServer.hasActiveTurn()) {
+    queueCodexSteerInput(session, resolved.entryId, sessionId, steerText, clientTs);
+    return true;
+  }
+
   try {
-    const steerText = String(message || '');
     await session.appServer.steer(
       appServerInput(steerText),
       `ccui-${clientTs}`,
     );
-    session.latestClientTs = Math.max(Number(session.latestClientTs || 0), Number(clientTs || 0));
-    const addedInputTokens = estimateTokenCount(steerText);
-    if (session.usageEstimate && addedInputTokens > 0) {
-      session.usageEstimate.inputTokens = Number(session.usageEstimate.inputTokens || 0) + addedInputTokens;
-      session.usageEstimate.billingInputTokens = Math.max(
-        Number(session.usageEstimate.billingInputTokens || 0),
-        session.usageEstimate.inputTokens,
-      );
-    }
-    codexTranscriptDb.record(
-      session.logicalSessionId || resolved.entryId || sessionId,
-      `user:steer:${clientTs}`,
-      'user',
-      steerText,
-      new Date(clientTs).toISOString(),
-    );
+    recordCodexSteerInput(session, resolved.entryId, sessionId, steerText, clientTs);
     return true;
   } catch (error) {
+    // `turn/start` can be accepted just before its id is reported. Preserve the
+    // user's follow-up at that boundary and inject it into the next continuation.
+    if (session.status === 'running' && session.appServer.isAlive()) {
+      queueCodexSteerInput(session, resolved.entryId, sessionId, steerText, clientTs);
+      console.warn(
+        `[Codex] Queued follow-up for ${sessionId} across a turn boundary:`,
+        error?.message || error,
+      );
+      return true;
+    }
     console.warn(`[Codex] Could not steer active session ${sessionId}:`, error?.message || error);
     return false;
   }

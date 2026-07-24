@@ -66,7 +66,6 @@ export default function SidebarSessionItem({
   const sessionView = createSessionViewModel(session, currentTime, t);
   const isSelected = selectedSession?.id === session.id;
   const runtimeSessionId = resolveCompactContinuationInfoForProject(project, session.id).sessionId;
-  const sessionTimeLabel = formatTimeAgo(sessionView.sessionTime, currentTime, t);
   const sessionTimeMs = new Date(sessionView.sessionTime).getTime();
   // Keep the recent marker aligned with labels through "3 mins ago". Since
   // relative minutes are floored, that label lasts until just before 4:00.
@@ -77,6 +76,12 @@ export default function SidebarSessionItem({
     activeSessions?.has(session.id) ||
     (runtimeSessionId && activeSessions?.has(runtimeSessionId)),
   );
+  // A local submit marks the session active before the backend has rewritten
+  // the rollout/project index. Do not leave the stale disk timestamp visible
+  // during that gap.
+  const sessionTimeLabel = isActive
+    ? formatTimeAgo(currentTime.toISOString(), currentTime, t)
+    : formatTimeAgo(sessionView.sessionTime, currentTime, t);
   const [moveMenu, setMoveMenu] = useState<{ top: number; left: number } | null>(null);
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const moveBtnRef = useRef<HTMLButtonElement>(null);

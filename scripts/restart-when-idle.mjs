@@ -3,6 +3,28 @@ import { spawnSync } from 'node:child_process';
 import https from 'node:https';
 
 await import('../server/load-env.js');
+const originalLog = console.log;
+const restartLockPath = process.env.CCUI_RESTART_LOCK_FILE
+  || `/tmp/ccui-safe-restart-${process.getuid?.() ?? 'user'}.lock`;
+
+// The first waiter restarts with the latest source, so later requests should
+// join it instead of scheduling additional disconnects.
+if (process.env.CCUI_RESTART_LOCK_HELD !== '1') {
+  const lockResult = spawnSync(
+    'flock',
+    ['-n', restartLockPath, process.execPath, process.argv[1], ...process.argv.slice(2)],
+    {
+      stdio: 'inherit',
+      env: { ...process.env, CCUI_RESTART_LOCK_HELD: '1' },
+    },
+  );
+  if (lockResult.status === 1) {
+    originalLog('[safe-restart] A restart is already queued; using the existing waiter.');
+    process.exit(0);
+  }
+  process.exit(lockResult.status ?? 1);
+}
+
 const securePort = Number(process.env.HTTPS_PORT || 3443);
 
 const getActiveTurnCount = () => new Promise((resolve, reject) => {

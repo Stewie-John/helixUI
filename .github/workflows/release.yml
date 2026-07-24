@@ -4,9 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Semver bump or exact version (patch, minor, major, 1.2.3)
+        description: Exact CalVer release (for example 2026.7.0)
         required: true
-        default: patch
+        default: 2026.7.0
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -25,6 +29,14 @@ jobs:
           node-version: 22
           cache: npm
           registry-url: https://registry.npmjs.org
+      - name: Validate release input and npm credentials
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          node -e 'if (!/^[0-9]{4}\.(?:[1-9]|1[0-2])\.[0-9]+$/.test(process.env.RELEASE_VERSION)) process.exit(1)'
+          test -n "$NODE_AUTH_TOKEN"
+          npm whoami
       - run: npm ci --include=dev
       - name: Create tag, GitHub release, and npm package
         run: npx release-it "${{ inputs.version }}" --ci

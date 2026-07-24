@@ -1222,6 +1222,51 @@
   filter: none !important;
 }
 
+/* The three-position appearance selector keeps one stable control geometry in
+   every theme. It must opt out of the global tech-theme octagonal button skin. */
+button.theme-mode-toggle,
+.tech button.theme-mode-toggle,
+.tech button.theme-mode-toggle:hover {
+  width: 80px !important;
+  height: 32px !important;
+  min-width: 80px !important;
+  padding: 0 !important;
+  border: 1px solid rgba(148, 163, 184, 0.42) !important;
+  border-radius: 9999px !important;
+  clip-path: none !important;
+  filter: none !important;
+  transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease !important;
+}
+
+button.theme-mode-toggle[data-theme="light"] {
+  background: #e5e7eb !important;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.45) !important;
+}
+
+button.theme-mode-toggle[data-theme="dark"] {
+  background: #374151 !important;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06) !important;
+}
+
+button.theme-mode-toggle[data-theme="tech"] {
+  background: #083344 !important;
+  border-color: rgba(34, 211, 238, 0.55) !important;
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.28), inset 0 0 0 1px rgba(34,211,238,0.08) !important;
+}
+
+.theme-mode-thumb,
+.tech .theme-mode-thumb {
+  border-radius: 9999px !important;
+  clip-path: none !important;
+  transition: transform 220ms ease !important;
+  will-change: transform;
+}
+
+.theme-mode-tick,
+.tech .theme-mode-tick {
+  border-radius: 9999px !important;
+}
+
 /* Daily-input cells are semantic buttons, but visually remain heatmap pixels.
    Keep the global tech-button skin from replacing their activity colors. */
 .tech button.daily-input-heat-cell,
@@ -1229,7 +1274,13 @@
 .tech button.daily-model-input-heat-cell,
 .tech button.daily-model-input-heat-cell:hover,
 .tech button.daily-output-heat-cell,
-.tech button.daily-output-heat-cell:hover {
+.tech button.daily-output-heat-cell:hover,
+button.daily-input-heat-cell,
+button.daily-input-heat-cell:hover,
+button.daily-model-input-heat-cell,
+button.daily-model-input-heat-cell:hover,
+button.daily-output-heat-cell,
+button.daily-output-heat-cell:hover {
   background: var(--daily-heat-color, #20272b) !important;
   appearance: none;
   -webkit-appearance: none;
@@ -1239,6 +1290,199 @@
   filter: none !important;
   opacity: 1 !important;
   transition: none !important;
+}
+
+/* Usage details are rendered through a body portal, so these selectors cannot
+   depend on the .tech ancestor. Fit the common laptop viewport without page
+   scrolling; use internal scrolling only when the viewport is physically too
+   short to contain all three activity maps. */
+.daily-usage-backdrop {
+  display: grid;
+  place-items: center;
+  padding: 14px;
+  overflow: hidden;
+}
+
+.daily-usage-dialog {
+  --daily-cell: 12px;
+  --daily-gap: 3px;
+  width: min(1420px, calc(100vw - 28px));
+  max-height: calc(100dvh - 28px);
+  display: flex;
+  flex-direction: column;
+}
+
+.daily-usage-header {
+  flex: 0 0 auto;
+  padding: 16px 18px 13px;
+  border-bottom: 1px solid rgba(76,226,255,0.2);
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.daily-usage-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding: 16px 18px 20px;
+}
+
+.daily-usage-section-title {
+  color: #9deeff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  margin-bottom: 9px;
+}
+
+.daily-usage-account-header {
+  display: grid;
+  gap: 5px;
+  padding: 7px 8px;
+  color: rgba(170,226,220,0.62);
+  font-size: 9px;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+
+.daily-usage-account-row {
+  gap: 5px;
+  padding: 9px 8px;
+  font-size: 12px;
+}
+
+.daily-usage-history-section {
+  margin-top: var(--daily-history-top);
+}
+
+.daily-usage-history-title {
+  margin-bottom: 11px;
+}
+
+.daily-usage-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-top: 7px;
+  color: #a9b1b2;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.daily-activity {
+  margin-top: 15px;
+}
+
+.daily-activity-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  margin-bottom: 7px;
+}
+
+.daily-activity-scroll {
+  overflow-x: auto;
+  padding-bottom: 7px;
+}
+
+.daily-activity-chart {
+  width: max-content;
+  min-width: min(790px, 100%);
+}
+
+.daily-activity-month-row,
+.daily-activity-grid-row {
+  display: grid;
+  grid-template-columns: 28px auto;
+  gap: 8px;
+}
+
+.daily-activity-month-row {
+  margin-bottom: 6px;
+}
+
+.daily-activity-months {
+  display: grid;
+  gap: var(--daily-gap);
+  height: 17px;
+  color: #aeb7bb;
+  font-size: 11px;
+}
+
+.daily-activity-weekdays {
+  display: grid;
+  grid-template-rows: repeat(7, var(--daily-cell));
+  gap: var(--daily-gap);
+  color: #aeb7bb;
+  font-size: 10px;
+  line-height: var(--daily-cell);
+}
+
+.daily-activity-cells {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, var(--daily-cell));
+  grid-auto-columns: var(--daily-cell);
+  gap: var(--daily-gap);
+}
+
+.daily-activity-legend {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 5px;
+  color: #929da0;
+  font-size: 10px;
+}
+
+@media (max-height: 1050px), (max-width: 1100px) {
+  .daily-usage-dialog {
+    --daily-cell: 10px;
+    --daily-gap: 2px;
+  }
+  .daily-usage-header { padding: 10px 14px 8px; }
+  .daily-usage-body { padding: 9px 14px 10px; }
+  .daily-usage-section-title { margin-bottom: 5px; }
+  .daily-usage-account-header { padding: 4px 6px; font-size: 8px; }
+  .daily-usage-account-row { padding: 5px 6px; font-size: 10px; }
+  .daily-usage-history-section { margin-top: min(var(--daily-history-top), 10px); }
+  .daily-usage-history-title { margin-bottom: 5px; }
+  .daily-usage-summary { gap: 2px 12px; margin-top: 3px; font-size: 10px; line-height: 1.35; }
+  .daily-activity { margin-top: 7px; }
+  .daily-activity-title { margin-bottom: 3px; font-size: 9px; }
+  .daily-activity-scroll { padding-bottom: 2px; }
+  .daily-activity-chart { min-width: 0; }
+  .daily-activity-month-row,
+  .daily-activity-grid-row { grid-template-columns: 24px auto; gap: 5px; }
+  .daily-activity-month-row { margin-bottom: 2px; }
+  .daily-activity-months { height: 12px; font-size: 9px; }
+  .daily-activity-weekdays { font-size: 8px; }
+  .daily-activity-legend { font-size: 8px; }
+}
+
+@media (max-height: 720px), (max-width: 760px) {
+  .daily-usage-backdrop { padding: 6px; }
+  .daily-usage-dialog {
+    --daily-cell: 8px;
+    --daily-gap: 2px;
+    width: calc(100vw - 12px);
+    max-height: calc(100dvh - 12px);
+  }
+  .daily-usage-header { padding: 7px 9px 5px; }
+  .daily-usage-header > div > div:last-child { display: none; }
+  .daily-usage-body { padding: 6px 8px 7px; }
+  .daily-usage-account-header { font-size: 7px; }
+  .daily-usage-account-header,
+  .daily-usage-account-row {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+  .daily-usage-account-row { padding-block: 4px; font-size: 9px; }
+  .daily-usage-summary { font-size: 9px; line-height: 1.2; }
+  .daily-activity { margin-top: 5px; }
+  .daily-activity-months { font-size: 8px; }
+  .daily-activity-legend span:nth-child(2) { height: 7px !important; }
 }
 
 /* ── 折叠区标题按钮（含 font-mono，如文件名链接）：纯文本，不切角 ── */

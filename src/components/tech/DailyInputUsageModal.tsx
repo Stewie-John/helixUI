@@ -150,23 +150,23 @@ function ActivityGrid({
     .filter((value) => value > 0)
     .sort((left, right) => left - right), [modelInput, output, weeks]);
   return (
-    <div style={{ marginTop: 15 }}>
-      <div style={{ color: accent, fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', marginBottom: 7 }}>
+    <div className="daily-activity">
+      <div className="daily-activity-title" style={{ color: accent }}>
         {t(output ? 'hud.outputActivity' : modelInput ? 'hud.modelInputActivity' : 'hud.inputActivity')}
       </div>
-      <div style={{ overflowX: 'auto', paddingBottom: 7 }}>
-        <div style={{ minWidth: 790, width: 'max-content' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '28px auto', gap: 8, marginBottom: 6 }}>
+      <div className="daily-activity-scroll">
+        <div className="daily-activity-chart">
+          <div className="daily-activity-month-row">
             <span />
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${weeks.length}, 12px)`, gap: 3, height: 17, color: '#aeb7bb', fontSize: 11 }}>
+            <div className="daily-activity-months" style={{ gridTemplateColumns: `repeat(${weeks.length}, var(--daily-cell))` }}>
               {monthLabels.map((label, index) => <span key={`${metric}-${label}-${index}`} style={{ whiteSpace: 'nowrap' }}>{label}</span>)}
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '28px auto', gap: 8 }}>
-            <div style={{ display: 'grid', gridTemplateRows: 'repeat(7, 12px)', gap: 3, color: '#aeb7bb', fontSize: 10, lineHeight: '12px' }}>
+          <div className="daily-activity-grid-row">
+            <div className="daily-activity-weekdays">
               {['', t('hud.weekdays.mon'), '', t('hud.weekdays.wed'), '', t('hud.weekdays.fri'), ''].map((label, index) => <span key={index}>{label}</span>)}
             </div>
-            <div style={{ display: 'grid', gridAutoFlow: 'column', gridTemplateRows: 'repeat(7, 12px)', gridAutoColumns: '12px', gap: 3 }}>
+            <div className="daily-activity-cells">
               {weeks.flatMap((week) => week).map((cell) => {
                 const value = output ? cell.outputTokens : modelInput ? cell.inputTokens : cell.charCount;
                 const heatAmount = continuousHeatAmount(value, peak, positiveValues);
@@ -188,7 +188,7 @@ function ActivityGrid({
                     title={`${cell.day}: ${value.toLocaleString()} ${unit}`}
                     style={{
                       '--daily-heat-color': heatColor,
-                      width: 12, height: 12, padding: 0, borderRadius: 1, border: 0,
+                      width: 'var(--daily-cell)', height: 'var(--daily-cell)', padding: 0, borderRadius: 1, border: 0,
                       outline: selected ? `1px solid ${accent}` : 'none',
                       outlineOffset: 1,
                       boxShadow: value > 0 ? `0 0 5px ${heatColor}55` : 'none',
@@ -201,7 +201,7 @@ function ActivityGrid({
           </div>
         </div>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 5, color: '#929da0', fontSize: 10 }}>
+      <div className="daily-activity-legend">
         <span>{t('hud.less')}</span>
         <span style={{
           width: 74, height: 11, borderRadius: 1,
@@ -389,12 +389,11 @@ export default function DailyInputUsageModal({
 
   return createPortal(
     <div
+      className="daily-usage-backdrop"
       role="presentation"
       onMouseDown={onClose}
       style={{
         position: 'fixed', inset: 0, zIndex: 10000, pointerEvents: 'auto',
-        display: 'grid', placeItems: 'center', padding: 18,
-        overflow: 'hidden',
         // A full-screen backdrop filter continuously recomposites the animated
         // page underneath on Safari. The opaque scrim keeps the same focus
         // treatment without making the modal expensive to scroll or resize.
@@ -402,19 +401,19 @@ export default function DailyInputUsageModal({
       }}
     >
       <div
+        className="daily-usage-dialog"
         role="dialog"
         aria-modal="true"
         aria-label={t('hud.dailyInputDetails')}
         onMouseDown={(event) => event.stopPropagation()}
         style={{
-          width: 'min(1420px, calc(100vw - 28px))',
           overflow: 'hidden', border: '1px solid rgba(76,226,255,0.72)', borderRadius: 4,
           background: 'rgba(6,15,23,0.985)', boxShadow: '0 0 34px rgba(0,217,255,0.2)',
           color: '#edf5f2', fontFamily: '"JetBrains Mono", "SFMono-Regular", Consolas, monospace',
           contain: 'layout paint', transform: 'translateZ(0)',
         }}
       >
-        <header style={{ padding: '16px 18px 13px', borderBottom: '1px solid rgba(76,226,255,0.2)', display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+        <header className="daily-usage-header">
           <div>
             <div style={{ color: '#6dffba', fontWeight: 850, fontSize: 14, letterSpacing: '0.08em' }}>
               {t('hud.dailyInput')}
@@ -428,18 +427,18 @@ export default function DailyInputUsageModal({
           </button>
         </header>
 
-        <div style={{ padding: '16px 18px 20px' }}>
+        <div className="daily-usage-body">
           {account.isAdmin && (
-            <section aria-labelledby="daily-input-accounts-title">
+            <section className="daily-usage-account-section" aria-labelledby="daily-input-accounts-title">
               <div
+                className="daily-usage-section-title"
                 id="daily-input-accounts-title"
-                style={{ color: '#9deeff', fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', marginBottom: 9 }}
               >
                 {t('hud.accountInputTotals')} · {rankingDayLabel}
               </div>
               <div style={{ overflowX: 'hidden', borderTop: '1px solid rgba(76,226,255,0.2)', borderBottom: '1px solid rgba(76,226,255,0.2)' }}>
                 <div style={{ width: '100%', minWidth: 0 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: accountGridColumns, gap: 5, padding: '7px 8px', color: 'rgba(170,226,220,0.62)', fontSize: 9, letterSpacing: '0.02em', textAlign: 'center' }}>
+                <div className="daily-usage-account-header" style={{ gridTemplateColumns: accountGridColumns }}>
                   <span>{t('hud.account')}</span>
                   <span>{t(selectedDay ? 'hud.characters' : 'hud.todayCharacters')}</span>
                   <span>{t(selectedDay ? 'hud.inputTokens' : 'hud.todayModelInput')}</span>
@@ -459,11 +458,12 @@ export default function DailyInputUsageModal({
                       type="button"
                       onClick={() => setSelectedUserId(user.userId)}
                       aria-pressed={selected}
+                      className="daily-usage-account-row"
                       style={{
                         width: '100%', display: 'grid', gridTemplateColumns: accountGridColumns,
-                        gap: 5, alignItems: 'center', padding: '9px 8px', border: 0, borderTop: '1px solid rgba(76,226,255,0.1)',
+                        alignItems: 'center', border: 0, borderTop: '1px solid rgba(76,226,255,0.1)',
                         background: selected ? 'rgba(34,205,229,0.13)' : 'transparent', color: '#edf5f2', cursor: 'pointer',
-                        fontFamily: 'inherit', fontSize: 12, textAlign: 'center',
+                        fontFamily: 'inherit', textAlign: 'center',
                       }}
                     >
                       <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', color: selected ? '#6dffba' : '#edf5f2', fontWeight: selected ? 800 : 600 }}>
@@ -486,10 +486,10 @@ export default function DailyInputUsageModal({
             </section>
           )}
 
-          <section aria-labelledby="daily-input-history-title" style={{ marginTop: account.isAdmin ? 22 : 0 }}>
+          <section className="daily-usage-history-section" aria-labelledby="daily-input-history-title" style={{ '--daily-history-top': account.isAdmin ? '22px' : '0px' } as CSSProperties}>
             <div
+              className="daily-usage-section-title daily-usage-history-title"
               id="daily-input-history-title"
-              style={{ color: '#9deeff', fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', marginBottom: 11 }}
             >
               {t('hud.inputHistory')} · {t('hud.last12Months')}
             </div>
@@ -499,7 +499,7 @@ export default function DailyInputUsageModal({
           {!loading && !historyError && history && (
             <>
               <div style={{ fontSize: 14, color: '#dce7e4', fontWeight: 750 }}>{history.username}</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 18px', marginTop: 7, color: '#a9b1b2', fontSize: 12, lineHeight: 1.65 }}>
+              <div className="daily-usage-summary">
                 <span>{t('hud.totalCharacters')} <b style={{ color: '#ffe29a' }}>{compact(summary?.lifetimeCount || 0)}</b></span>
                 <span>· {t('hud.dailyPeak')} <b style={{ color: '#ffd0a3' }}>{compact(summary?.peakCount || 0)}</b></span>
                 <span>· {t('hud.inputStreak')} <b style={{ color: '#ffe29a' }}>{summary?.currentStreak || 0}d</b> ({t('hud.longestStreak')} {summary?.bestStreak || 0}d)</span>

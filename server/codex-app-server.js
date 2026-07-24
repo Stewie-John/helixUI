@@ -2,6 +2,9 @@ import { spawn } from 'child_process';
 import readline from 'readline';
 
 const APP_SERVER_TIMEOUT_MS = Number(process.env.CODEX_APP_SERVER_TIMEOUT_MS || 30000);
+const APP_SERVER_COMPACTION_TIMEOUT_MS = Number(
+  process.env.CODEX_APP_SERVER_COMPACTION_TIMEOUT_MS || 5 * 60 * 1000,
+);
 
 const normalizeItemType = (type) => ({
   agentMessage: 'agent_message',
@@ -29,6 +32,15 @@ function normalizeItem(item) {
     result: item.result,
     error: item.error,
   };
+}
+
+function isFinalAssistantMessageForTurn(message, threadId, turnId = null) {
+  if (message?.method !== 'item/completed') return false;
+  const params = message.params || {};
+  if (!threadId || params.threadId !== threadId) return false;
+  if (turnId && params.turnId !== turnId) return false;
+  const item = normalizeItem(params.item);
+  return item?.type === 'agent_message' && item.phase === 'final_answer';
 }
 
 export class CodexAppServerSession {
@@ -167,9 +179,12 @@ export class CodexAppServerSession {
   async runTurn({ input, cwd, model, effort, serviceTier, sandboxPolicy, approvalPolicy }, onNotification) {
     this.approvalDecision = approvalPolicy === 'never' ? 'accept' : 'decline';
     this.lastUsedAt = Date.now();
+    let settled = false;
     const turnDone = new Promise((resolve, reject) => {
       const previousHandler = this.notificationHandler;
       const finish = (callback, value) => {
+        if (settled) return;
+        settled = true;
         this.notificationHandler = previousHandler;
         this.turnReject = null;
         this.activeTurnId = null;
@@ -209,8 +224,70 @@ export class CodexAppServerSession {
       this.failTurn(error);
       throw error;
     }
-    this.activeTurnId = response?.turn?.id || this.activeTurnId;
+    if (!settled) this.activeTurnId = response?.turn?.id || this.activeTurnId;
     return turnDone;
+  }
+
+  async compactThread(onNotification = async () => {}) {
+    if (!this.threadId) throw new Error('Codex thread is not attached');
+    if (this.hasActiveTurn()) throw new Error('Cannot compact while a Codex turn is active');
+
+    this.lastUsedAt = Date.now();
+    const previousHandler = this.notificationHandler;
+    let compactionTurnId = null;
+    let settled = false;
+    let timeout;
+    const compactionDone = new Promise((resolve, reject) => {
+      const finish = (callback, value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        this.notificationHandler = previousHandler;
+        this.turnReject = null;
+        this.activeTurnId = null;
+        callback(value);
+      };
+      this.turnReject = (error) => finish(reject, error);
+      this.notificationHandler = async (message) => {
+        try { await onNotification(message); } catch { /* UI transport must not stall compaction */ }
+        const params = message.params || {};
+        if (params.threadId !== this.threadId) return;
+        if (message.method === 'turn/started') {
+          compactionTurnId = params.turn?.id || compactionTurnId;
+          this.activeTurnId = compactionTurnId;
+        } else if (
+          (message.method === 'item/started' || message.method === 'item/completed')
+          && normalizeItem(params.item)?.type === 'context_compaction'
+        ) {
+          compactionTurnId = params.turnId || compactionTurnId;
+          this.activeTurnId = compactionTurnId;
+        } else if (
+          message.method === 'turn/completed'
+          && compactionTurnId
+          && (!params.turn?.id || params.turn.id === compactionTurnId)
+        ) {
+          finish(resolve, params);
+        } else if (
+          message.method === 'turn/failed'
+          && (!compactionTurnId || !params.turn?.id || params.turn.id === compactionTurnId)
+        ) {
+          finish(reject, new Error(params.turn?.error?.message || 'Codex context compaction failed'));
+        }
+      };
+      timeout = setTimeout(
+        () => finish(reject, new Error('Codex context compaction timed out')),
+        APP_SERVER_COMPACTION_TIMEOUT_MS,
+      );
+    });
+    compactionDone.catch(() => {});
+
+    try {
+      await this.request('thread/compact/start', { threadId: this.threadId });
+    } catch (error) {
+      this.failTurn(error);
+      throw error;
+    }
+    return compactionDone;
   }
 
   async steer(input, clientUserMessageId = null) {
@@ -259,4 +336,4 @@ export class CodexAppServerSession {
   }
 }
 
-export { normalizeItem };
+export { isFinalAssistantMessageForTurn, normalizeItem };
