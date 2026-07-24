@@ -62,14 +62,27 @@ providers while keeping the terminal-native workflow underneath.
 
 ## The workspace
 
+### Complete desktop command center
+
 <p align="center">
-  <img src="docs/assets/workspace-overview.png" alt="HelixUI DNA-themed chat workspace with persistent tool output and HUD controls" width="760">
+  <img src="docs/assets/workspace-overview.png" alt="Complete HelixUI desktop workspace with projects, sessions, Chat, navigation, Progress, input controls, and system HUD" width="100%">
 </p>
 
 The optional technology theme uses a DNA double-helix scene, grid-aligned
 surfaces, compact HUD panels, and color-coded terminal output. Two restrained
 themes are included for users who prefer a conventional workspace. Visual
 styling never changes session behavior or provider data.
+
+### The same running session on mobile
+
+<p align="center">
+  <img src="docs/assets/mobile-overview.png" alt="Complete HelixUI mobile interface with chat, Goal state, live-turn status, quota, context, resources, and bottom navigation" width="330">
+</p>
+<p align="center"><sub>Full-height mobile layout with synthetic demo data. Chat, Shell, Files, and Git remain one tap away.</sub></p>
+
+Mobile is not a reduced read-only viewer. It can reconnect to the same active
+turn, display buffered progress, accept follow-ups, inspect Goal state, and
+switch between Chat, Shell, Files, and Git without creating a second session.
 
 ## Capability map
 

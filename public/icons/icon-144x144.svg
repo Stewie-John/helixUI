@@ -1,12 +1,18 @@
-<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Background fills entire canvas - iOS will handle corner rounding -->
-  <rect width="512" height="512" fill="hsl(240 5.9% 10%)"/>
-  
-  <!-- MessageSquare icon - scaled and centered -->
-  <path d="M128 144C128 126.327 142.327 112 160 112H352C369.673 112 384 126.327 384 144V272C384 289.673 369.673 304 352 304H224L128 400V144Z" 
-        stroke="white" 
-        stroke-width="32" 
-        stroke-linecap="round" 
-        stroke-linejoin="round" 
-        fill="none"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="c" x1="128" y1="64" x2="384" y2="448" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#26F7E8"/><stop offset="1" stop-color="#14A8FF"/>
+    </linearGradient>
+    <linearGradient id="p" x1="384" y1="64" x2="128" y2="448" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF78D7"/><stop offset="1" stop-color="#9B7BFF"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="#061426"/>
+  <rect x="28" y="28" width="456" height="456" rx="116" fill="#07192B" stroke="#0C7899" stroke-width="16"/>
+  <path d="M144 64C144 144 368 144 368 224C368 304 144 304 144 384C144 424 184 448 256 464"
+        stroke="url(#c)" stroke-width="40" stroke-linecap="round"/>
+  <path d="M368 64C368 144 144 144 144 224C144 304 368 304 368 384C368 424 328 448 256 464"
+        stroke="url(#p)" stroke-width="40" stroke-linecap="round"/>
+  <path d="M176 120H336M176 200H336M176 288H336M176 376H336"
+        stroke="#71F8C5" stroke-width="20" stroke-linecap="round" opacity=".9"/>
 </svg>

@@ -1,17 +1,19 @@
-<svg
-  xmlns="http://www.w3.org/2000/svg"
-  width="32"
-  height="32"
-  viewBox="0 0 32 32"
-  fill="none"
->
-  <rect width="32" height="32" rx="8" fill="hsl(221.2 83.2% 53.3%)"/>
-  <path
-    d="M8 9C8 8.44772 8.44772 8 9 8H23C23.5523 8 24 8.44772 24 9V18C24 18.5523 23.5523 19 23 19H12L8 23V9Z"
-    stroke="white"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    fill="none"
-  />
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="helix-cyan" x1="16" y1="8" x2="48" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#26F7E8"/>
+      <stop offset="1" stop-color="#14A8FF"/>
+    </linearGradient>
+    <linearGradient id="helix-pink" x1="48" y1="8" x2="16" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF78D7"/>
+      <stop offset="1" stop-color="#9B7BFF"/>
+    </linearGradient>
+  </defs>
+  <rect x="1" y="1" width="62" height="62" rx="15" fill="#061426" stroke="#0C7899" stroke-width="2"/>
+  <path d="M18 8C18 18 46 18 46 28C46 38 18 38 18 48C18 53 23 56 32 58"
+        stroke="url(#helix-cyan)" stroke-width="5" stroke-linecap="round"/>
+  <path d="M46 8C46 18 18 18 18 28C18 38 46 38 46 48C46 53 41 56 32 58"
+        stroke="url(#helix-pink)" stroke-width="5" stroke-linecap="round"/>
+  <path d="M22 15H42M22 25H42M22 36H42M22 47H42"
+        stroke="#71F8C5" stroke-width="2.5" stroke-linecap="round" opacity=".88"/>
 </svg>

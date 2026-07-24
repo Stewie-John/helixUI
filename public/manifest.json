@@ -1,7 +1,7 @@
 {
   "name": "HelixUI",
   "short_name": "HelixUI",
-  "description": "Web interface for local AI coding agents",
+  "description": "Observable self-hosted workspace for long-running AI coding agents",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#020817",

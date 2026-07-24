@@ -1,9 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <!-- Background fills entire canvas -->
-  <rect x="0" y="0" width="64" height="64" fill="hsl(240 5.9% 10%)"/>
-  
-  <!-- MessageSquare icon - exact same as sidebar -->
-  <g transform="translate(32, 32) scale(1.333) translate(-12, -12)" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="c" x1="16" y1="8" x2="48" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#26F7E8"/><stop offset="1" stop-color="#14A8FF"/>
+    </linearGradient>
+    <linearGradient id="p" x1="48" y1="8" x2="16" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF78D7"/><stop offset="1" stop-color="#9B7BFF"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#061426"/>
+  <path d="M18 8C18 18 46 18 46 28C46 38 18 38 18 48C18 53 23 56 32 58" stroke="url(#c)" stroke-width="5" stroke-linecap="round"/>
+  <path d="M46 8C46 18 18 18 18 28C18 38 46 38 46 48C46 53 41 56 32 58" stroke="url(#p)" stroke-width="5" stroke-linecap="round"/>
+  <path d="M22 15H42M22 25H42M22 36H42M22 47H42" stroke="#71F8C5" stroke-width="2.5" stroke-linecap="round"/>
 </svg>

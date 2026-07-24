@@ -55,12 +55,25 @@ HelixUI 不只是把代理 CLI 套进浏览器。它是为同时运行多个 AI 
 
 ## 工作区
 
+### 完整桌面控制台
+
 <p align="center">
-  <img src="docs/assets/workspace-overview.png" alt="HelixUI DNA 科技主题 Chat 工作区" width="760">
+  <img src="docs/assets/workspace-overview.png" alt="包含项目、会话、Chat、导航、Progress、输入区和系统 HUD 的完整 HelixUI 桌面工作区" width="100%">
 </p>
 
 可选的科技主题使用 DNA 双螺旋场景、网格化界面、紧凑 HUD 和终端式彩色输出。
 同时提供两套更克制的传统工作主题。视觉风格不会改变会话行为或模型数据。
+
+### 在手机上延续同一个运行会话
+
+<p align="center">
+  <img src="docs/assets/mobile-overview.png" alt="包含 Chat、Goal、实时工作状态、Quota、Context、资源面板和底部导航的完整 HelixUI 手机版" width="330">
+</p>
+<p align="center"><sub>完整纵向移动布局，图中数值为合成演示数据；Chat、Shell、Files 和 Git 一键切换。</sub></p>
+
+手机版不是只能查看结果的精简页面。它能够重连到同一个活动轮次、恢复缓冲进度、
+发送后续消息、查看 Goal 状态，并在 Chat、Shell、Files 和 Git 之间切换，而不会
+额外创建第二个会话。
 
 ## 能力总览
 
