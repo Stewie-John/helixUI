@@ -16,7 +16,7 @@
 <p align="center">
   <img src="docs/assets/operations-console.png" alt="HelixUI Goal、用量、额度、实时工作与系统资源面板" width="100%">
 </p>
-<p align="center"><sub>Goal、用量、额度、实时工作和系统面板；图中数值均为合成演示数据。</sub></p>
+<p align="center"><sub>来自隔离演示实例的真实 HelixUI 浏览器截图。账号、用量、额度和系统数值均为由真实界面渲染的隐私安全演示数据。</sub></p>
 
 HelixUI 不只是把代理 CLI 套进浏览器。它是为同时运行多个 AI 编程会话、需要从
 不同设备回来继续工作，并且关心“谁正在运行、何时结束、占用了多少上下文、主机
@@ -69,7 +69,7 @@ HelixUI 不只是把代理 CLI 套进浏览器。它是为同时运行多个 AI 
 <p align="center">
   <img src="docs/assets/mobile-overview.png" alt="包含 Chat、Goal、实时工作状态、Quota、Context、资源面板和底部导航的完整 HelixUI 手机版" width="330">
 </p>
-<p align="center"><sub>完整纵向移动布局，图中数值为合成演示数据；Chat、Shell、Files 和 Git 一键切换。</sub></p>
+<p align="center"><sub>来自同一隔离演示实例的真实完整纵向手机截图；Chat、Shell、Files 和 Git 一键切换。</sub></p>
 
 手机版不是只能查看结果的精简页面。它能够重连到同一个活动轮次、恢复缓冲进度、
 发送后续消息、查看 Goal 状态，并在 Chat、Shell、Files 和 Git 之间切换，而不会

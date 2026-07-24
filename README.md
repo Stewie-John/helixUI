@@ -16,7 +16,7 @@
 <p align="center">
   <img src="docs/assets/operations-console.png" alt="HelixUI observability console with Goal, usage, quota, live-turn, and resource panels" width="100%">
 </p>
-<p align="center"><sub>Goal, usage, quota, live-turn, and system panels shown with synthetic demo data.</sub></p>
+<p align="center"><sub>A genuine HelixUI browser capture from an isolated demo instance. Account, usage, quota, and system values are privacy-safe demo data rendered by the real interface.</sub></p>
 
 HelixUI is not just a browser wrapper around an agent CLI. It is a visual
 operations workspace for people who keep several AI coding sessions running,
@@ -78,7 +78,7 @@ styling never changes session behavior or provider data.
 <p align="center">
   <img src="docs/assets/mobile-overview.png" alt="Complete HelixUI mobile interface with chat, Goal state, live-turn status, quota, context, resources, and bottom navigation" width="330">
 </p>
-<p align="center"><sub>Full-height mobile layout with synthetic demo data. Chat, Shell, Files, and Git remain one tap away.</sub></p>
+<p align="center"><sub>A genuine full-height mobile browser capture from the same isolated demo instance. Chat, Shell, Files, and Git remain one tap away.</sub></p>
 
 Mobile is not a reduced read-only viewer. It can reconnect to the same active
 turn, display buffered progress, accept follow-ups, inspect Goal state, and

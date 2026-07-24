@@ -53,7 +53,7 @@
     "runClaudeCli": "プロジェクトディレクトリでClaude CLIを実行して始めましょう"
   },
   "app": {
-    "title": "Claude Code UI",
+    "title": "HelixUI",
     "subtitle": "AIコーディングアシスタント"
   },
   "sessions": {

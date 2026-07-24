@@ -14,7 +14,7 @@ const LoadingScreen = () => (
       <div className="flex justify-center mb-4">
         <DNASpinner size="md" />
       </div>
-      <h1 className="text-2xl font-bold text-foreground mb-2">Claude Code UI</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-2">HelixUI</h1>
       <p className="text-muted-foreground mt-2">Loading...</p>
     </div>
   </div>
