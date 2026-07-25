@@ -14,9 +14,9 @@
 </p>
 
 <p align="center">
-  <img src="docs/assets/operations-console.png" alt="HelixUI Goal、用量、额度、实时工作与系统资源面板" width="100%">
+  <img src="docs/assets/workspace-overview.png" alt="包含项目、会话、Chat、导航、Progress、输入区和系统 HUD 的完整 HelixUI 桌面工作区" width="100%">
 </p>
-<p align="center"><sub>来自隔离演示实例的真实 HelixUI 浏览器截图。账号、用量、额度和系统数值均为由真实界面渲染的隐私安全演示数据。</sub></p>
+<p align="center"><sub>来自隔离 HelixUI 演示实例的真实完整工作区浏览器截图。</sub></p>
 
 HelixUI 不只是把代理 CLI 套进浏览器。它是为同时运行多个 AI 编程会话、需要从
 不同设备回来继续工作，并且关心“谁正在运行、何时结束、占用了多少上下文、主机
@@ -55,14 +55,16 @@ HelixUI 不只是把代理 CLI 套进浏览器。它是为同时运行多个 AI 
 
 ## 工作区
 
-### 完整桌面控制台
+### 不离开工作区即可查看可观测信息
 
 <p align="center">
-  <img src="docs/assets/workspace-overview.png" alt="包含项目、会话、Chat、导航、Progress、输入区和系统 HUD 的完整 HelixUI 桌面工作区" width="100%">
+  <img src="docs/assets/operations-console.png" alt="包含账号总览与每日活动热力图的 HelixUI 用量面板" width="100%">
 </p>
+<p align="center"><sub>账号、用量、额度和系统数值均为由真实界面渲染的隐私安全演示数据。</sub></p>
 
-可选的科技主题使用 DNA 双螺旋场景、网格化界面、紧凑 HUD 和终端式彩色输出。
-同时提供两套更克制的传统工作主题。视觉风格不会改变会话行为或模型数据。
+用量详情直接覆盖在当前工作区上，无需跳转到独立仪表盘。可选的科技主题使用
+DNA 双螺旋场景、网格化界面、紧凑 HUD 和终端式彩色输出，同时提供两套更克制的
+传统工作主题。
 
 ### 在手机上延续同一个运行会话
 

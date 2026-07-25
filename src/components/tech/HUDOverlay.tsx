@@ -1595,28 +1595,6 @@ export default function HUDOverlay({
         <Corner pos="bl" size={48} animate={animationEnabled} />
         <Corner pos="br" size={48} animate={animationEnabled} />
 
-        {/* 顶部中央标题条：窄屏（<1024px）隐藏，避免与 header 右侧 Chat/Shell 标签重叠 */}
-        {viewportW >= 1024 && (
-        <div style={{
-          position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
-          display: 'flex', alignItems: 'center', gap: 10,
-          maxWidth: 'calc(100vw - 360px)', overflow: 'hidden', boxSizing: 'border-box',
-          padding: '2px 18px',
-          background: 'rgba(0,14,38,0.86)',
-          borderBottom: '1px solid rgba(0,180,230,0.22)',
-          borderLeft:   '1px solid rgba(0,180,230,0.12)',
-          borderRight:  '1px solid rgba(0,180,230,0.12)',
-          contain: 'layout style',
-          ...mono,
-        }}>
-          <Dot ms={900} animate={animationEnabled} />
-          <span style={{ color: '#00d9ff', fontSize: sessionName ? 10.5 : 9.5, letterSpacing: sessionName ? '0.08em' : '0.22em', textShadow: '0 0 8px rgba(0,217,255,0.5)', maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {sessionName || 'AI COMMAND INTERFACE'}
-          </span>
-          <Dot ms={1300} animate={animationEnabled} />
-        </div>
-        )}
-
       </div>
 
       {/* ════ 悬浮球（收起状态）════ */}

@@ -14,9 +14,9 @@
 </p>
 
 <p align="center">
-  <img src="docs/assets/operations-console.png" alt="HelixUI observability console with Goal, usage, quota, live-turn, and resource panels" width="100%">
+  <img src="docs/assets/workspace-overview.png" alt="Complete HelixUI desktop workspace with projects, sessions, Chat, navigation, Progress, input controls, and system HUD" width="100%">
 </p>
-<p align="center"><sub>A genuine HelixUI browser capture from an isolated demo instance. Account, usage, quota, and system values are privacy-safe demo data rendered by the real interface.</sub></p>
+<p align="center"><sub>A genuine full-workspace browser capture from an isolated HelixUI demo instance.</sub></p>
 
 HelixUI is not just a browser wrapper around an agent CLI. It is a visual
 operations workspace for people who keep several AI coding sessions running,
@@ -62,16 +62,18 @@ providers while keeping the terminal-native workflow underneath.
 
 ## The workspace
 
-### Complete desktop command center
+### Observability without leaving the workspace
 
 <p align="center">
-  <img src="docs/assets/workspace-overview.png" alt="Complete HelixUI desktop workspace with projects, sessions, Chat, navigation, Progress, input controls, and system HUD" width="100%">
+  <img src="docs/assets/operations-console.png" alt="HelixUI usage console with account totals and daily activity heatmaps" width="100%">
 </p>
+<p align="center"><sub>Account, usage, quota, and system values are privacy-safe demo data rendered by the real interface.</sub></p>
 
-The optional technology theme uses a DNA double-helix scene, grid-aligned
-surfaces, compact HUD panels, and color-coded terminal output. Two restrained
-themes are included for users who prefer a conventional workspace. Visual
-styling never changes session behavior or provider data.
+Usage details open over the active workspace instead of sending you to a
+separate dashboard. The optional technology theme uses a DNA double-helix
+scene, grid-aligned surfaces, compact HUD panels, and color-coded terminal
+output. Two restrained themes are included for users who prefer a conventional
+workspace.
 
 ### The same running session on mobile
 
