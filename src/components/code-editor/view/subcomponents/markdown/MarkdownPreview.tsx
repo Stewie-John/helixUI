@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
+import { normalizeLatexDelimiters } from '../../../../chat/utils/chatFormatting';
 import MarkdownCodeBlock from './MarkdownCodeBlock';
 
 type MarkdownPreviewProps = {
@@ -37,8 +38,15 @@ const markdownPreviewComponents: Components = {
 };
 
 export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
+  const normalizedContent = useMemo(() => normalizeLatexDelimiters(content), [content]);
   const remarkPlugins = useMemo(() => [remarkGfm, remarkMath], []);
-  const rehypePlugins = useMemo(() => [rehypeKatex], []);
+  const rehypePlugins = useMemo(
+    () => [[rehypeKatex, { strict: false, throwOnError: false }] as [
+      typeof rehypeKatex,
+      { strict: boolean; throwOnError: boolean },
+    ]],
+    [],
+  );
 
   return (
     <ReactMarkdown
@@ -46,7 +54,7 @@ export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
       rehypePlugins={rehypePlugins}
       components={markdownPreviewComponents}
     >
-      {content}
+      {normalizedContent}
     </ReactMarkdown>
   );
 }

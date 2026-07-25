@@ -15,3 +15,15 @@ test('Markdown files open rendered and keep an explicit edit toggle', async () =
   );
   assert.match(source, /onToggleMarkdownPreview=\{\(\) => setMarkdownPreview\(\(previous\) => !previous\)\}/);
 });
+
+test('Markdown preview normalizes common LaTeX delimiters before rendering', async () => {
+  const source = await readFile(
+    new URL('../src/components/code-editor/view/subcomponents/markdown/MarkdownPreview.tsx', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(source, /normalizeLatexDelimiters\(content\)/);
+  assert.match(source, /\{normalizedContent\}/);
+  assert.match(source, /strict:\s*false/);
+  assert.match(source, /throwOnError:\s*false/);
+});
