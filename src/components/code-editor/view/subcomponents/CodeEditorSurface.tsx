@@ -5,6 +5,8 @@ import MarkdownPreview from './markdown/MarkdownPreview';
 
 type CodeEditorSurfaceProps = {
   content: string;
+  filePath: string;
+  projectName?: string;
   onChange: (value: string) => void;
   markdownPreview: boolean;
   isMarkdownFile: boolean;
@@ -18,6 +20,8 @@ type CodeEditorSurfaceProps = {
 
 export default function CodeEditorSurface({
   content,
+  filePath,
+  projectName,
   onChange,
   markdownPreview,
   isMarkdownFile,
@@ -45,7 +49,7 @@ export default function CodeEditorSurface({
     return (
       <div className="h-full overflow-y-auto bg-white dark:bg-gray-900">
         <div ref={markdownPreviewRef} className="max-w-4xl mx-auto px-8 py-6 prose prose-sm dark:prose-invert prose-headings:font-semibold prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-code:text-sm prose-pre:bg-gray-900 prose-img:rounded-lg max-w-none break-words [overflow-wrap:anywhere]">
-          <MarkdownPreview content={content} />
+          <MarkdownPreview content={content} filePath={filePath} projectName={projectName} />
         </div>
       </div>
     );

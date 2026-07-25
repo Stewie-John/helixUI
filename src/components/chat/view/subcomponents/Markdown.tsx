@@ -13,6 +13,8 @@ import { useDeviceSettings } from '../../../../hooks/useDeviceSettings';
 // ── 消息时间戳 Context：把消息创建时间透传给 ServerImage，用于图片快照 key ──
 // 接受 ISO 字符串、毫秒数字、秒级数字或 Date 对象，0/空 表示无时间戳
 const MessageTimestampContext = React.createContext<string | number | Date>(0);
+type LocalFileOpenHandler = (filePath: string) => void;
+const LocalFileOpenContext = React.createContext<LocalFileOpenHandler | undefined>(undefined);
 
 // ── 全局图片灯箱（Portal 渲染，不受消息组件 re-render 影响）────────
 let _setLightboxSrc: ((src: string | null) => void) | null = null;
@@ -65,6 +67,7 @@ type MarkdownProps = {
   children: React.ReactNode;
   className?: string;
   messageTimestamp?: string | number | Date;  // 消息的创建时间戳（ISO字符串/ms/s/Date），用于图片快照 key
+  onFileOpen?: LocalFileOpenHandler;
 };
 
 type CodeBlockProps = {
@@ -73,6 +76,69 @@ type CodeBlockProps = {
   className?: string;
   children?: React.ReactNode;
 };
+
+const LOCAL_TEXT_FILE_EXTENSION_RE = /\.(?:md|markdown|txt|text|log|csv|tsv|json|jsonl|ya?ml|toml|ini|conf|config|env|sh|bash|zsh|fish|py|r|js|jsx|mjs|cjs|ts|tsx|css|scss|less|html?|xml|sql|java|kt|kts|c|cc|cpp|cxx|h|hpp|rs|go|rb|php|swift|scala|lua|pl|pm|rst|adoc|tex|bib)(?::\d+(?::\d+)?)?$/i;
+
+export function resolveLocalFileHref(href?: string) {
+  if (!href) return null;
+
+  let value = href.trim();
+  try {
+    value = decodeURIComponent(value);
+  } catch {
+    // Keep the original value when a partial percent escape cannot be decoded.
+  }
+
+  if (
+    /^(?:https?|mailto|tel|data|blob):/i.test(value)
+    || value.startsWith('//')
+    || value.startsWith('#')
+  ) {
+    return null;
+  }
+
+  value = value
+    .replace(/^file:\/\//i, '')
+    .replace(/^sandbox:/i, '')
+    .replace(/^vscode:\/\/file/i, '')
+    .replace(/[?#].*$/, '')
+    .replace(/:(\d+)(?::\d+)?$/, '');
+
+  const isAbsoluteFile = (
+    value.startsWith('/')
+    || /^[A-Za-z]:[\\/]/.test(value)
+  ) && LOCAL_TEXT_FILE_EXTENSION_RE.test(value);
+  const isRelativeFile = (
+    value.startsWith('./')
+    || value.startsWith('../')
+    || (!value.startsWith('/') && value.includes('/'))
+  ) && LOCAL_TEXT_FILE_EXTENSION_RE.test(value);
+
+  return isAbsoluteFile || isRelativeFile ? value : null;
+}
+
+function MarkdownLink({ href, children }: { href?: string; children?: React.ReactNode }) {
+  const onFileOpen = React.useContext(LocalFileOpenContext);
+  const localFilePath = resolveLocalFileHref(href);
+
+  return (
+    <a
+      href={href}
+      className="text-[#0969da] dark:text-[#58a6ff] hover:underline"
+      target={localFilePath && onFileOpen ? undefined : '_blank'}
+      rel={localFilePath && onFileOpen ? undefined : 'noopener noreferrer'}
+      title={localFilePath || undefined}
+      onClick={localFilePath && onFileOpen
+        ? (event) => {
+          event.preventDefault();
+          onFileOpen(localFilePath);
+        }
+        : undefined}
+    >
+      {children}
+    </a>
+  );
+}
 
 const codexTerminalSyntaxTheme: Record<string, React.CSSProperties> = {
   'code[class*="language-"]': {
@@ -407,11 +473,7 @@ const markdownComponents = {
       {children}
     </blockquote>
   ),
-  a: ({ href, children }: { href?: string; children?: React.ReactNode }) => (
-    <a href={href} className="text-[#0969da] dark:text-[#58a6ff] hover:underline" target="_blank" rel="noopener noreferrer">
-      {children}
-    </a>
-  ),
+  a: MarkdownLink,
   p: ({ children }: { children?: React.ReactNode }) => <div className="mb-2 last:mb-0">{renderTerminalAccents(children)}</div>,
   li: ({ children }: { children?: React.ReactNode }) => <li>{renderTerminalAccents(children)}</li>,
   table: ({ children }: { children?: React.ReactNode }) => (
@@ -639,7 +701,12 @@ const markdownComponentsWithImage = {
   code: CodeBlockWithGallery,
 };
 
-export function Markdown({ children, className, messageTimestamp = 0 as string | number | Date }: MarkdownProps) {
+export function Markdown({
+  children,
+  className,
+  messageTimestamp = 0 as string | number | Date,
+  onFileOpen,
+}: MarkdownProps) {
   const raw = String(children ?? '');
   // 将裸露的图片路径收集并注入 img-gallery 代码块
   const content = normalizeInlineCodeFences(injectImagePaths(normalizeLatexDelimiters(raw)));
@@ -651,12 +718,14 @@ export function Markdown({ children, className, messageTimestamp = 0 as string |
 
   return (
     // 通过 Context 将消息时间戳传递给嵌套的 ServerImage，实现稳定的快照 key
-    <MessageTimestampContext.Provider value={messageTimestamp}>
-      <div className={className}>
-        <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins} components={markdownComponentsWithImage as any}>
-          {content}
-        </ReactMarkdown>
-      </div>
-    </MessageTimestampContext.Provider>
+    <LocalFileOpenContext.Provider value={onFileOpen}>
+      <MessageTimestampContext.Provider value={messageTimestamp}>
+        <div className={className}>
+          <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins} components={markdownComponentsWithImage as any}>
+            {content}
+          </ReactMarkdown>
+        </div>
+      </MessageTimestampContext.Provider>
+    </LocalFileOpenContext.Provider>
   );
 }

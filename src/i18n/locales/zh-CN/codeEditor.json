@@ -23,7 +23,9 @@
     "close": "关闭",
     "previewMarkdown": "预览 Markdown",
     "editMarkdown": "编辑 Markdown",
-    "exportPdf": "导出渲染后的 PDF"
+    "exportPdf": "导出渲染后的 PDF",
+    "hideFileTree": "隐藏文件目录",
+    "showFileTree": "显示文件目录"
   },
   "errors": {
     "pdfPopupBlocked": "PDF 导出窗口被浏览器拦截。请允许此网站打开弹出式窗口后重试。"

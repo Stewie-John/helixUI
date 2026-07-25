@@ -151,16 +151,17 @@ export default function AppContent() {
   }, [showTechDecor]);
 
   const showInputSeparator = activeTab !== 'files';
+  const showHudPanels = showTechDecor && activeTab !== 'files';
 
   return (
     <div
       className="fixed inset-0 flex bg-background"
-      style={showTechDecor ? { '--tech-hud-reserve': `${hudReservePx}px` } as CSSProperties : undefined}
+      style={showHudPanels ? { '--tech-hud-reserve': `${hudReservePx}px` } as CSSProperties : undefined}
     >
       {/* DNA 双螺旋动态背景 + HUD 装饰叠层（仅桌面高性能科技主题下显示） */}
       {showTechDecor && <DNABackground />}
       {showMobileTechBackdrop && <DNABackground forceVideo />}
-      {showTechDecor && (
+      {showHudPanels && (
         <HUDOverlay
           sessionName={selectedSession?.summary || selectedSession?.name || undefined}
           sessionId={selectedSession?.id}
@@ -211,7 +212,7 @@ export default function AppContent() {
       <div
         ref={contentAreaRef}
         className={`flex-1 flex flex-col min-w-0 ${isMobile ? 'pb-mobile-nav' : ''}`}
-        style={showTechDecor ? { paddingRight: `${hudReservePx}px` } : undefined}
+        style={showHudPanels ? { paddingRight: `${hudReservePx}px` } : undefined}
       >
         <MainContent
           selectedProject={selectedProject}

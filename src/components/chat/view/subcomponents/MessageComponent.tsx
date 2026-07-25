@@ -775,7 +775,7 @@ const MessageComponent = memo(({ message, index, prevMessage, createDiff, onFile
               <>
                 <div className="flex flex-col">
                   <div className="flex flex-col">
-                    <Markdown className="codex-terminal-prose prose prose-sm max-w-none dark:prose-invert" messageTimestamp={message.timestamp}>
+                    <Markdown className="codex-terminal-prose prose prose-sm max-w-none dark:prose-invert" messageTimestamp={message.timestamp} onFileOpen={onFileOpen}>
                       {String(message.displayText || '')}
                     </Markdown>
                   </div>
@@ -828,7 +828,7 @@ const MessageComponent = memo(({ message, index, prevMessage, createDiff, onFile
                         <span className="text-xs font-medium text-red-700 dark:text-red-300">{t('messageTypes.error')}</span>
                       </div>
                       <div className="relative text-sm text-red-900 dark:text-red-100">
-                        <Markdown className="codex-terminal-prose prose prose-sm max-w-none prose-red dark:prose-invert" messageTimestamp={message.timestamp}>
+                        <Markdown className="codex-terminal-prose prose prose-sm max-w-none prose-red dark:prose-invert" messageTimestamp={message.timestamp} onFileOpen={onFileOpen}>
                           {String(message.toolResult.content || '')}
                         </Markdown>
                         {permissionSuggestion && (
@@ -996,7 +996,7 @@ const MessageComponent = memo(({ message, index, prevMessage, createDiff, onFile
                     <span>{t('thinking.emoji')}</span>
                   </summary>
                   <div className="mt-2 pl-4 border-l-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 text-sm">
-                    <Markdown className="codex-terminal-prose prose prose-sm max-w-none dark:prose-invert prose-gray" messageTimestamp={message.timestamp}>
+                    <Markdown className="codex-terminal-prose prose prose-sm max-w-none dark:prose-invert prose-gray" messageTimestamp={message.timestamp} onFileOpen={onFileOpen}>
                       {message.content}
                     </Markdown>
                   </div>
@@ -1056,7 +1056,7 @@ const MessageComponent = memo(({ message, index, prevMessage, createDiff, onFile
                     getRepeatedProgressOutput(content) ? (
                       <RepeatedProgressPreview content={content} />
                     ) : (
-                      <Markdown className="codex-terminal-prose prose prose-sm max-w-none dark:prose-invert prose-gray" messageTimestamp={message.timestamp}>
+                      <Markdown className="codex-terminal-prose prose prose-sm max-w-none dark:prose-invert prose-gray" messageTimestamp={message.timestamp} onFileOpen={onFileOpen}>
                         {content}
                       </Markdown>
                     )

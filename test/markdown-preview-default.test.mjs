@@ -26,6 +26,29 @@ test('Markdown preview normalizes common LaTeX delimiters before rendering', asy
   assert.match(source, /throwOnError:\s*false/);
 });
 
+test('Markdown preview resolves and authenticated-loads local image assets', async () => {
+  const [preview, surface, editor] = await Promise.all([
+    readFile(
+      new URL('../src/components/code-editor/view/subcomponents/markdown/MarkdownPreview.tsx', import.meta.url),
+      'utf8',
+    ),
+    readFile(
+      new URL('../src/components/code-editor/view/subcomponents/CodeEditorSurface.tsx', import.meta.url),
+      'utf8',
+    ),
+    readFile(new URL('../src/components/code-editor/view/CodeEditor.tsx', import.meta.url), 'utf8'),
+  ]);
+
+  assert.match(preview, /export function resolveMarkdownAssetPath/);
+  assert.match(preview, /authenticatedFetch\(/);
+  assert.match(preview, /files\/content\?path=/);
+  assert.match(preview, /img: MarkdownImage/);
+  assert.match(preview, /URL\.createObjectURL\(blob\)/);
+  assert.match(surface, /<MarkdownPreview content=\{content\} filePath=\{filePath\} projectName=\{projectName\}/);
+  assert.match(editor, /filePath=\{file\.path\}/);
+  assert.match(editor, /projectName=\{file\.projectName\}/);
+});
+
 test('Rendered Markdown can be exported through a print-only PDF document', async () => {
   const [editor, header, exporter] = await Promise.all([
     readFile(new URL('../src/components/code-editor/view/CodeEditor.tsx', import.meta.url), 'utf8'),

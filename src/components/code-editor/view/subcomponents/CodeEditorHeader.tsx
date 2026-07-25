@@ -1,4 +1,4 @@
-import { Code2, Download, Eye, FileDown, Maximize2, Minimize2, Save, Settings as SettingsIcon, X } from 'lucide-react';
+import { Code2, Download, Eye, FileDown, Maximize2, Minimize2, PanelLeftClose, PanelLeftOpen, Save, Settings as SettingsIcon, X } from 'lucide-react';
 import type { CodeEditorFile } from '../../types/types';
 
 type CodeEditorHeaderProps = {
@@ -7,12 +7,14 @@ type CodeEditorHeaderProps = {
   isFullscreen: boolean;
   isMarkdownFile: boolean;
   markdownPreview: boolean;
+  isExpanded: boolean;
   saving: boolean;
   saveSuccess: boolean;
   onToggleMarkdownPreview: () => void;
   onOpenSettings: () => void;
   onDownload: () => void;
   onExportMarkdownPdf: () => void;
+  onToggleExpand: (() => void) | null;
   onSave: () => void;
   onToggleFullscreen: () => void;
   onClose: () => void;
@@ -23,6 +25,8 @@ type CodeEditorHeaderProps = {
     settings: string;
     download: string;
     exportPdf: string;
+    hideFileTree: string;
+    showFileTree: string;
     save: string;
     saving: string;
     saved: string;
@@ -38,12 +42,14 @@ export default function CodeEditorHeader({
   isFullscreen,
   isMarkdownFile,
   markdownPreview,
+  isExpanded,
   saving,
   saveSuccess,
   onToggleMarkdownPreview,
   onOpenSettings,
   onDownload,
   onExportMarkdownPdf,
+  onToggleExpand,
   onSave,
   onToggleFullscreen,
   onClose,
@@ -70,6 +76,17 @@ export default function CodeEditorHeader({
 
       {/* Buttons - don't shrink, always visible */}
       <div className="flex items-center gap-0.5 shrink-0">
+        {isSidebar && onToggleExpand && (
+          <button
+            type="button"
+            onClick={onToggleExpand}
+            className="icon-btn p-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center"
+            title={isExpanded ? labels.showFileTree : labels.hideFileTree}
+          >
+            {isExpanded ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+          </button>
+        )}
+
         {isMarkdownFile && (
           <button
             type="button"

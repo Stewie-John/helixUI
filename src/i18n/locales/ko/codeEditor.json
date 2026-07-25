@@ -23,7 +23,9 @@
     "close": "닫기",
     "previewMarkdown": "Markdown 미리보기",
     "editMarkdown": "Markdown 편집",
-    "exportPdf": "렌더링된 PDF 내보내기"
+    "exportPdf": "렌더링된 PDF 내보내기",
+    "hideFileTree": "파일 트리 숨기기",
+    "showFileTree": "파일 트리 표시"
   },
   "errors": {
     "pdfPopupBlocked": "PDF 내보내기 창이 차단되었습니다. 이 사이트의 팝업을 허용한 후 다시 시도하세요."

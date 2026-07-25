@@ -23,7 +23,9 @@
     "close": "Close",
     "previewMarkdown": "Preview markdown",
     "editMarkdown": "Edit markdown",
-    "exportPdf": "Export rendered PDF"
+    "exportPdf": "Export rendered PDF",
+    "hideFileTree": "Hide file tree",
+    "showFileTree": "Show file tree"
   },
   "errors": {
     "pdfPopupBlocked": "PDF export was blocked. Allow pop-ups for this site and try again."

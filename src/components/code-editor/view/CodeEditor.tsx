@@ -352,7 +352,7 @@ export default function CodeEditor({
         isExpanded,
         onToggleDiff: () => setShowDiff((previous) => !previous),
         onPopOut,
-        onToggleExpand,
+        onToggleExpand: null,
         labels: {
           changes: t('toolbar.changes'),
           previousChange: t('toolbar.previousChange'),
@@ -364,7 +364,7 @@ export default function CodeEditor({
         },
       })
     ),
-    [file, isExpanded, isSidebar, onPopOut, onToggleExpand, showDiff, t],
+    [file, isExpanded, isSidebar, onPopOut, showDiff, t],
   );
 
   const extensions = useMemo(() => {
@@ -481,12 +481,14 @@ export default function CodeEditor({
             isFullscreen={isFullscreen}
             isMarkdownFile={isMarkdownFile}
             markdownPreview={markdownPreview}
+            isExpanded={isExpanded}
             saving={saving}
             saveSuccess={saveSuccess}
             onToggleMarkdownPreview={() => setMarkdownPreview((previous) => !previous)}
             onOpenSettings={() => window.openSettings?.('appearance')}
             onDownload={handleDownload}
             onExportMarkdownPdf={handleExportMarkdownPdf}
+            onToggleExpand={onToggleExpand}
             onSave={handleSave}
             onToggleFullscreen={() => setIsFullscreen((previous) => !previous)}
             onClose={onClose}
@@ -497,6 +499,8 @@ export default function CodeEditor({
               settings: t('toolbar.settings'),
               download: t('actions.download'),
               exportPdf: t('actions.exportPdf'),
+              hideFileTree: t('actions.hideFileTree'),
+              showFileTree: t('actions.showFileTree'),
               save: t('actions.save'),
               saving: t('actions.saving'),
               saved: t('actions.saved'),
@@ -515,6 +519,8 @@ export default function CodeEditor({
           <div className="flex-1 overflow-hidden">
             <CodeEditorSurface
               content={content}
+              filePath={file.path}
+              projectName={file.projectName}
               onChange={setContent}
               markdownPreview={markdownPreview}
               isMarkdownFile={isMarkdownFile}
