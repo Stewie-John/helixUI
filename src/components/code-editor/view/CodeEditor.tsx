@@ -3,7 +3,7 @@ import { unifiedMergeView } from '@codemirror/merge';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { Prec, type Extension } from '@codemirror/state';
 import { tags as t } from '@lezer/highlight';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCodeEditorDocument } from '../hooks/useCodeEditorDocument';
 import { useCodeEditorSettings } from '../hooks/useCodeEditorSettings';
@@ -224,6 +224,10 @@ const isTextDocument = (filename: string) => {
 };
 
 const isLogDocument = (filename: string) => filename.toLowerCase().endsWith('.log');
+const isMarkdownFilename = (filename: string) => {
+  const extension = filename.split('.').pop()?.toLowerCase();
+  return extension === 'md' || extension === 'markdown';
+};
 
 const looksLikeLogDocument = (content: string) => {
   const lines = content.split('\n').slice(0, 80);
@@ -247,7 +251,7 @@ export default function CodeEditor({
   const { t } = useTranslation('codeEditor');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showDiff, setShowDiff] = useState(Boolean(file.diffInfo));
-  const [markdownPreview, setMarkdownPreview] = useState(false);
+  const [markdownPreview, setMarkdownPreview] = useState(() => isMarkdownFilename(file.name));
 
   const {
     isDarkMode,
@@ -272,10 +276,11 @@ export default function CodeEditor({
     projectPath,
   });
 
-  const isMarkdownFile = useMemo(() => {
-    const extension = file.name.split('.').pop()?.toLowerCase();
-    return extension === 'md' || extension === 'markdown';
-  }, [file.name]);
+  const isMarkdownFile = useMemo(() => isMarkdownFilename(file.name), [file.name]);
+
+  useEffect(() => {
+    setMarkdownPreview(isMarkdownFilename(file.name));
+  }, [file.name, file.path]);
 
   const isPlainTextDocument = useMemo(() => isTextDocument(file.name), [file.name]);
   const isLogFile = useMemo(
