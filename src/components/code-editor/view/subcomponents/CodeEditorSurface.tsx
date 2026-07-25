@@ -1,6 +1,6 @@
 import CodeMirror from '@uiw/react-codemirror';
 import type { Extension } from '@codemirror/state';
-import { useEffect } from 'react';
+import { useEffect, type RefObject } from 'react';
 import MarkdownPreview from './markdown/MarkdownPreview';
 
 type CodeEditorSurfaceProps = {
@@ -13,6 +13,7 @@ type CodeEditorSurfaceProps = {
   showLineNumbers: boolean;
   extensions: Extension[];
   softWrap: boolean;
+  markdownPreviewRef: RefObject<HTMLDivElement>;
 };
 
 export default function CodeEditorSurface({
@@ -25,6 +26,7 @@ export default function CodeEditorSurface({
   showLineNumbers,
   extensions,
   softWrap,
+  markdownPreviewRef,
 }: CodeEditorSurfaceProps) {
   useEffect(() => {
     const refresh = () => window.dispatchEvent(new Event('resize'));
@@ -42,7 +44,7 @@ export default function CodeEditorSurface({
   if (markdownPreview && isMarkdownFile) {
     return (
       <div className="h-full overflow-y-auto bg-white dark:bg-gray-900">
-        <div className="max-w-4xl mx-auto px-8 py-6 prose prose-sm dark:prose-invert prose-headings:font-semibold prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-code:text-sm prose-pre:bg-gray-900 prose-img:rounded-lg max-w-none break-words [overflow-wrap:anywhere]">
+        <div ref={markdownPreviewRef} className="max-w-4xl mx-auto px-8 py-6 prose prose-sm dark:prose-invert prose-headings:font-semibold prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-code:text-sm prose-pre:bg-gray-900 prose-img:rounded-lg max-w-none break-words [overflow-wrap:anywhere]">
           <MarkdownPreview content={content} />
         </div>
       </div>

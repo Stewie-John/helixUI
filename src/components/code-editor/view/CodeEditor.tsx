@@ -3,7 +3,7 @@ import { unifiedMergeView } from '@codemirror/merge';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { Prec, type Extension } from '@codemirror/state';
 import { tags as t } from '@lezer/highlight';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCodeEditorDocument } from '../hooks/useCodeEditorDocument';
 import { useCodeEditorSettings } from '../hooks/useCodeEditorSettings';
@@ -19,6 +19,7 @@ import {
 import { getEditorStyles } from '../utils/editorStyles';
 import { createEditorToolbarPanelExtension } from '../utils/editorToolbarPanel';
 import { createLogScrollMemoryExtension } from '../utils/logScrollMemory';
+import { exportMarkdownPdf } from '../utils/exportMarkdownPdf';
 import CodeEditorFooter from './subcomponents/CodeEditorFooter';
 import CodeEditorHeader from './subcomponents/CodeEditorHeader';
 import CodeEditorLoadingState from './subcomponents/CodeEditorLoadingState';
@@ -248,10 +249,12 @@ export default function CodeEditor({
   onToggleExpand = null,
   onPopOut = null,
 }: CodeEditorProps) {
-  const { t } = useTranslation('codeEditor');
+  const { t, i18n } = useTranslation('codeEditor');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showDiff, setShowDiff] = useState(Boolean(file.diffInfo));
   const [markdownPreview, setMarkdownPreview] = useState(() => isMarkdownFilename(file.name));
+  const [pdfExportError, setPdfExportError] = useState<string | null>(null);
+  const markdownPreviewRef = useRef<HTMLDivElement>(null);
 
   const {
     isDarkMode,
@@ -280,7 +283,22 @@ export default function CodeEditor({
 
   useEffect(() => {
     setMarkdownPreview(isMarkdownFilename(file.name));
+    setPdfExportError(null);
   }, [file.name, file.path]);
+
+  const handleExportMarkdownPdf = () => {
+    if (!markdownPreviewRef.current) return;
+
+    setPdfExportError(null);
+    const opened = exportMarkdownPdf({
+      root: markdownPreviewRef.current,
+      fileName: file.name,
+      language: i18n.resolvedLanguage || i18n.language,
+    });
+    if (!opened) {
+      setPdfExportError(t('errors.pdfPopupBlocked'));
+    }
+  };
 
   const isPlainTextDocument = useMemo(() => isTextDocument(file.name), [file.name]);
   const isLogFile = useMemo(
@@ -468,6 +486,7 @@ export default function CodeEditor({
             onToggleMarkdownPreview={() => setMarkdownPreview((previous) => !previous)}
             onOpenSettings={() => window.openSettings?.('appearance')}
             onDownload={handleDownload}
+            onExportMarkdownPdf={handleExportMarkdownPdf}
             onSave={handleSave}
             onToggleFullscreen={() => setIsFullscreen((previous) => !previous)}
             onClose={onClose}
@@ -477,6 +496,7 @@ export default function CodeEditor({
               previewMarkdown: t('actions.previewMarkdown'),
               settings: t('toolbar.settings'),
               download: t('actions.download'),
+              exportPdf: t('actions.exportPdf'),
               save: t('actions.save'),
               saving: t('actions.saving'),
               saved: t('actions.saved'),
@@ -486,9 +506,9 @@ export default function CodeEditor({
             }}
           />
 
-          {saveError && (
+          {(saveError || pdfExportError) && (
             <div className="px-3 py-1.5 text-xs text-red-700 bg-red-50 border-b border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-900/40">
-              {saveError}
+              {saveError || pdfExportError}
             </div>
           )}
 
@@ -503,6 +523,7 @@ export default function CodeEditor({
               showLineNumbers={showLineNumbers}
               extensions={extensions}
               softWrap={softWrapEnabled}
+              markdownPreviewRef={markdownPreviewRef}
             />
           </div>
 

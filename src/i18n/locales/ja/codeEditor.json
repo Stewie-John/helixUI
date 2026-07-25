@@ -20,7 +20,13 @@
     "saved": "保存しました！",
     "exitFullscreen": "全画面を終了",
     "fullscreen": "全画面",
-    "close": "閉じる"
+    "close": "閉じる",
+    "previewMarkdown": "Markdownをプレビュー",
+    "editMarkdown": "Markdownを編集",
+    "exportPdf": "レンダリング済みPDFを書き出す"
+  },
+  "errors": {
+    "pdfPopupBlocked": "PDF書き出しウィンドウがブロックされました。このサイトのポップアップを許可して再試行してください。"
   },
   "footer": {
     "lines": "行数:",

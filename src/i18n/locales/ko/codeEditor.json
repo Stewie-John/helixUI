@@ -20,7 +20,13 @@
     "saved": "저장됨!",
     "exitFullscreen": "전체화면 종료",
     "fullscreen": "전체화면",
-    "close": "닫기"
+    "close": "닫기",
+    "previewMarkdown": "Markdown 미리보기",
+    "editMarkdown": "Markdown 편집",
+    "exportPdf": "렌더링된 PDF 내보내기"
+  },
+  "errors": {
+    "pdfPopupBlocked": "PDF 내보내기 창이 차단되었습니다. 이 사이트의 팝업을 허용한 후 다시 시도하세요."
   },
   "footer": {
     "lines": "줄:",

@@ -32,6 +32,18 @@ export function normalizeLatexDelimiters(text: string) {
   });
 
   const normalized = protectedText
+    .replace(
+      /^([ \t]*>[ \t]*)\\{1,2}\[[ \t]*\n([\s\S]*?)^[ \t]*>[ \t]*\\{1,2}\][ \t]*$/gm,
+      (_match, prefix: string, formula: string) => {
+        const quotedFormula = formula
+          .replace(/\n$/, '')
+          .split('\n')
+          .map((line) => line.replace(/^[ \t]*>[ \t]?/, ''))
+          .map((line) => `${prefix}${line}`)
+          .join('\n');
+        return `${prefix}$$\n${quotedFormula}\n${prefix}$$`;
+      },
+    )
     .replace(/\\{1,2}\[([\s\S]*?)\\{1,2}\]/g, (_match, formula: string) =>
       `\n\n$$\n${formula.trim()}\n$$\n\n`,
     )

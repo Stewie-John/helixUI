@@ -1,4 +1,4 @@
-import { Code2, Download, Eye, Maximize2, Minimize2, Save, Settings as SettingsIcon, X } from 'lucide-react';
+import { Code2, Download, Eye, FileDown, Maximize2, Minimize2, Save, Settings as SettingsIcon, X } from 'lucide-react';
 import type { CodeEditorFile } from '../../types/types';
 
 type CodeEditorHeaderProps = {
@@ -12,6 +12,7 @@ type CodeEditorHeaderProps = {
   onToggleMarkdownPreview: () => void;
   onOpenSettings: () => void;
   onDownload: () => void;
+  onExportMarkdownPdf: () => void;
   onSave: () => void;
   onToggleFullscreen: () => void;
   onClose: () => void;
@@ -21,6 +22,7 @@ type CodeEditorHeaderProps = {
     previewMarkdown: string;
     settings: string;
     download: string;
+    exportPdf: string;
     save: string;
     saving: string;
     saved: string;
@@ -41,6 +43,7 @@ export default function CodeEditorHeader({
   onToggleMarkdownPreview,
   onOpenSettings,
   onDownload,
+  onExportMarkdownPdf,
   onSave,
   onToggleFullscreen,
   onClose,
@@ -79,6 +82,17 @@ export default function CodeEditorHeader({
             title={markdownPreview ? labels.editMarkdown : labels.previewMarkdown}
           >
             {markdownPreview ? <Code2 className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+        )}
+
+        {isMarkdownFile && markdownPreview && (
+          <button
+            type="button"
+            onClick={onExportMarkdownPdf}
+            className="icon-btn p-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center"
+            title={labels.exportPdf}
+          >
+            <FileDown className="w-4 h-4" />
           </button>
         )}
 

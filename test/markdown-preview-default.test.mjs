@@ -9,10 +9,8 @@ test('Markdown files open rendered and keep an explicit edit toggle', async () =
   );
 
   assert.match(source, /useState\(\(\) => isMarkdownFilename\(file\.name\)\)/);
-  assert.match(
-    source,
-    /useEffect\(\(\) => \{\s*setMarkdownPreview\(isMarkdownFilename\(file\.name\)\);\s*\}, \[file\.name, file\.path\]\)/,
-  );
+  assert.match(source, /setMarkdownPreview\(isMarkdownFilename\(file\.name\)\)/);
+  assert.match(source, /\}, \[file\.name, file\.path\]\)/);
   assert.match(source, /onToggleMarkdownPreview=\{\(\) => setMarkdownPreview\(\(previous\) => !previous\)\}/);
 });
 
@@ -26,4 +24,26 @@ test('Markdown preview normalizes common LaTeX delimiters before rendering', asy
   assert.match(source, /\{normalizedContent\}/);
   assert.match(source, /strict:\s*false/);
   assert.match(source, /throwOnError:\s*false/);
+});
+
+test('Rendered Markdown can be exported through a print-only PDF document', async () => {
+  const [editor, header, exporter] = await Promise.all([
+    readFile(new URL('../src/components/code-editor/view/CodeEditor.tsx', import.meta.url), 'utf8'),
+    readFile(
+      new URL('../src/components/code-editor/view/subcomponents/CodeEditorHeader.tsx', import.meta.url),
+      'utf8',
+    ),
+    readFile(
+      new URL('../src/components/code-editor/utils/exportMarkdownPdf.ts', import.meta.url),
+      'utf8',
+    ),
+  ]);
+
+  assert.match(editor, /exportMarkdownPdf\(\{/);
+  assert.match(header, /isMarkdownFile && markdownPreview/);
+  assert.match(header, /onClick=\{onExportMarkdownPdf\}/);
+  assert.match(exporter, /class="markdown-pdf-document prose max-w-none"/);
+  assert.match(exporter, /querySelectorAll\('button, \[role="button"\]'\)/);
+  assert.match(exporter, /@page \{ size: A4;/);
+  assert.match(exporter, /printWindow\.print\(\)/);
 });

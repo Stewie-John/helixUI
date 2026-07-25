@@ -20,7 +20,13 @@
     "saved": "已保存！",
     "exitFullscreen": "退出全屏",
     "fullscreen": "全屏",
-    "close": "关闭"
+    "close": "关闭",
+    "previewMarkdown": "预览 Markdown",
+    "editMarkdown": "编辑 Markdown",
+    "exportPdf": "导出渲染后的 PDF"
+  },
+  "errors": {
+    "pdfPopupBlocked": "PDF 导出窗口被浏览器拦截。请允许此网站打开弹出式窗口后重试。"
   },
   "footer": {
     "lines": "行数：",
