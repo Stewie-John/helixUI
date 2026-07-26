@@ -60,5 +60,11 @@ export default {
       },
     },
   },
-  plugins: [require('@tailwindcss/typography')],
+  plugins: [
+    require('@tailwindcss/typography'),
+    // 触摸设备上 hover 永不触发，只靠 group-hover 显示的行内操作按钮会完全点不到。
+    require('tailwindcss/plugin')(({ addVariant }) => {
+      addVariant('touch', '@media (hover: none)');
+    }),
+  ],
 }

@@ -342,6 +342,8 @@ export default function SidebarSessionItem({
           className={cn(
             'absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1 transition-opacity duration-150',
             'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto',
+            'focus-within:opacity-100 focus-within:pointer-events-auto',
+            'touch:opacity-100 touch:pointer-events-auto',
           )}
         >
             {editingSession === session.id ? (
