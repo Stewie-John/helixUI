@@ -10,7 +10,12 @@ import { resolvePathWithinRoot } from '../utils/path-security.js';
 
 const router = express.Router();
 
-function spawnAsync(command, args, options = {}) {
+// git 可能因为凭据提示、网络挂起或超大仓库而永远不返回。没有上限的话，这些请求
+// 会一直占着连接，输出也会无限堆在内存里。
+const GIT_TIMEOUT_MS = 60_000;
+const GIT_MAX_OUTPUT_BYTES = 16 * 1024 * 1024;
+
+function spawnAsync(command, args, { timeout = GIT_TIMEOUT_MS, ...options } = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       ...options,
@@ -19,22 +24,37 @@ function spawnAsync(command, args, options = {}) {
 
     let stdout = '';
     let stderr = '';
+    let settled = false;
 
-    child.stdout.on('data', (data) => {
-      stdout += data.toString();
-    });
+    const finish = (fn, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      fn(value);
+    };
 
-    child.stderr.on('data', (data) => {
-      stderr += data.toString();
-    });
+    const timer = setTimeout(() => {
+      child.kill('SIGKILL');
+      finish(reject, new Error(`Command timed out after ${timeout}ms: ${command} ${args.join(' ')}`));
+    }, timeout);
 
-    child.on('error', (error) => {
-      reject(error);
-    });
+    const collect = (chunk, current) => {
+      const next = current + chunk.toString();
+      if (next.length > GIT_MAX_OUTPUT_BYTES) {
+        child.kill('SIGKILL');
+        finish(reject, new Error(`Command produced more than ${GIT_MAX_OUTPUT_BYTES} bytes of output`));
+      }
+      return next;
+    };
+
+    child.stdout.on('data', (data) => { stdout = collect(data, stdout); });
+    child.stderr.on('data', (data) => { stderr = collect(data, stderr); });
+
+    child.on('error', (error) => finish(reject, error));
 
     child.on('close', (code) => {
       if (code === 0) {
-        resolve({ stdout, stderr });
+        finish(resolve, { stdout, stderr });
         return;
       }
 
@@ -42,7 +62,7 @@ function spawnAsync(command, args, options = {}) {
       error.code = code;
       error.stdout = stdout;
       error.stderr = stderr;
-      reject(error);
+      finish(reject, error);
     });
   });
 }

@@ -13,8 +13,12 @@ process.env.WORKSPACES_ROOT = workspaceRoot;
 process.env.CLOUDCLI_DATA_DIR = path.join(temporaryRoot, 'data');
 process.env.DATABASE_PATH = path.join(temporaryRoot, 'data', 'auth.db');
 
-const { validateWorkspacePath, WORKSPACES_ROOT } = await import('../server/routes/projects.js');
-const { resolvePathWithinRoot } = await import('../server/utils/path-security.js');
+const {
+  validateWorkspacePath,
+  WORKSPACES_ROOT,
+  assertSupportedRemoteUrl,
+} = await import('../server/routes/projects.js');
+const { resolvePathWithinRoot, isSafePathSegment } = await import('../server/utils/path-security.js');
 const {
   isAllowedRequestHost,
   isAllowedWebSocketOrigin,
@@ -131,6 +135,67 @@ test('public hostname allowlists reject host-header confusion', () => {
     false,
   );
   assert.equal(isAllowedRequestHost({ headers: { host: 'anything.test' } }, ''), true);
+});
+
+test('project and session identifiers cannot carry a path', () => {
+  for (const traversal of ['../../../tmp', '..', '.', 'a/b', 'a\\b', '', 'x\0y', '/etc']) {
+    assert.equal(isSafePathSegment(traversal), false, `expected ${JSON.stringify(traversal)} to be rejected`);
+  }
+  for (const valid of ['-mnt-data-bks-LSJ', 'project.name_1', 'a-b-c']) {
+    assert.equal(isSafePathSegment(valid), true, `expected ${JSON.stringify(valid)} to be accepted`);
+  }
+});
+
+// Express decodes %2F into route params, so `..%2F..%2Ftmp` arrives as a real
+// relative path and escapes whatever root the handler joins it onto. The
+// handler here stands in for the deletion routes that call fs.rm(recursive).
+test('percent-encoded traversal never reaches a route handler', async () => {
+  const express = (await import('express')).default;
+  const app = express();
+  app.param('projectName', (req, res, next, value) => (
+    isSafePathSegment(value) ? next() : res.status(400).json({ error: 'Invalid projectName' })
+  ));
+  app.delete('/api/projects/:projectName', (req, res) => res.json({ reached: req.params.projectName }));
+
+  const server = app.listen(0);
+  await new Promise((resolve) => server.once('listening', resolve));
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const escaped = await fetch(`${origin}/api/projects/..%2F..%2F..%2Ftmp`, { method: 'DELETE' });
+    assert.equal(escaped.status, 400);
+
+    const allowed = await fetch(`${origin}/api/projects/-mnt-data`, { method: 'DELETE' });
+    assert.equal(allowed.status, 200);
+    assert.deepEqual(await allowed.json(), { reached: '-mnt-data' });
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+// `git clone -- <url>` blocks option injection but not the transport itself:
+// `ext::` hands the rest of the string to a shell, and `file://` reads any local
+// directory. Both are valid git URLs, so the scheme needs an allowlist.
+test('clone remote URLs are restricted to network transports', () => {
+  for (const url of [
+    'https://github.com/owner/repo.git',
+    'http://gitea.internal/owner/repo.git',
+    'ssh://git@github.com/owner/repo.git',
+    'git://github.com/owner/repo.git',
+    'git@github.com:owner/repo.git',
+  ]) {
+    assert.equal(assertSupportedRemoteUrl(url), url, `expected ${url} to be accepted`);
+  }
+
+  for (const url of [
+    'ext::sh -c "id > /tmp/pwned"',
+    'file:///etc',
+    '/etc/passwd',
+    '../../../etc',
+    '',
+    'javascript:alert(1)',
+  ]) {
+    assert.throws(() => assertSupportedRemoteUrl(url), /remote URLs are supported/, `expected ${JSON.stringify(url)} to be rejected`);
+  }
 });
 
 test('invalid bearer tokens are explicitly marked without conflating normal forbidden responses', async () => {

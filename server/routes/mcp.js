@@ -7,6 +7,9 @@ import { dirname } from 'path';
 import { spawn } from 'child_process';
 
 const router = express.Router();
+
+// claude CLI 可能卡在凭据提示或网络请求上永不退出，把 HTTP 请求一起挂住。
+const MCP_CLI_TIMEOUT_MS = 30_000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -18,11 +21,11 @@ router.get('/cli/list', async (req, res) => {
     console.log('📋 Listing MCP servers using Claude CLI');
     
     const { spawn } = await import('child_process');
-    const { promisify } = await import('util');
-    const exec = promisify(spawn);
-    
+
     const process = spawn('claude', ['mcp', 'list'], {
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: MCP_CLI_TIMEOUT_MS,
+      killSignal: 'SIGKILL'
     });
     
     let stdout = '';
@@ -98,7 +101,9 @@ router.post('/cli/add', async (req, res) => {
     
     // For local scope, we need to run the command in the project directory
     const spawnOptions = {
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: MCP_CLI_TIMEOUT_MS,
+      killSignal: 'SIGKILL'
     };
     
     if (scope === 'local' && projectPath) {
@@ -191,7 +196,9 @@ router.post('/cli/add-json', async (req, res) => {
     
     // For local scope, we need to run the command in the project directory
     const spawnOptions = {
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: MCP_CLI_TIMEOUT_MS,
+      killSignal: 'SIGKILL'
     };
     
     if (scope === 'local' && projectPath) {
@@ -268,7 +275,9 @@ router.delete('/cli/remove/:name', async (req, res) => {
     console.log('🔧 Running Claude CLI command:', 'claude', cliArgs.join(' '));
     
     const process = spawn('claude', cliArgs, {
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: MCP_CLI_TIMEOUT_MS,
+      killSignal: 'SIGKILL'
     });
     
     let stdout = '';
@@ -311,7 +320,9 @@ router.get('/cli/get/:name', async (req, res) => {
     const { spawn } = await import('child_process');
     
     const process = spawn('claude', ['mcp', 'get', name], {
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: MCP_CLI_TIMEOUT_MS,
+      killSignal: 'SIGKILL'
     });
     
     let stdout = '';

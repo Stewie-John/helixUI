@@ -13,8 +13,30 @@ function sanitizeGitError(message, token) {
   return message.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), '***');
 }
 
+// `--` 只能挡住选项注入，挡不住传输协议本身：`ext::sh -c ...` 是合法的 git URL，
+// 会被 git 当成命令执行；`file://` 与裸本地路径则能把服务器上的任意目录克隆出来。
+// 所以远端地址必须走白名单，而不是只做参数转义。
+const ALLOWED_REMOTE_PROTOCOLS = new Set(['https:', 'http:', 'ssh:', 'git:']);
+const SCP_LIKE_PATTERN = /^[A-Za-z0-9._-]+@[A-Za-z0-9.-]+:[A-Za-z0-9._~/-]+$/;
+
+export function assertSupportedRemoteUrl(githubUrl) {
+  const url = String(githubUrl || '').trim();
+  if (SCP_LIKE_PATTERN.test(url)) return url;
+
+  let parsed = null;
+  try {
+    parsed = new URL(url);
+  } catch {
+    parsed = null;
+  }
+  if (!parsed || !ALLOWED_REMOTE_PROTOCOLS.has(parsed.protocol) || !parsed.hostname) {
+    throw new Error('Only https://, ssh:// and git@host:owner/repo remote URLs are supported');
+  }
+  return url;
+}
+
 function repositoryNameFromUrl(githubUrl) {
-  const normalized = String(githubUrl || '').replace(/\/+$/, '').replace(/\.git$/, '');
+  const normalized = assertSupportedRemoteUrl(githubUrl).replace(/\/+$/, '').replace(/\.git$/, '');
   const repoName = normalized.split(/[/:]/).pop();
   if (!repoName || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,199}$/.test(repoName)) {
     throw new Error('Invalid repository URL');
@@ -403,7 +425,8 @@ router.post('/clone-progress', async (req, res) => {
       githubToken = newGithubToken;
     }
 
-    const repoName = repositoryNameFromUrl(githubUrl);
+    const remoteUrl = assertSupportedRemoteUrl(githubUrl);
+    const repoName = repositoryNameFromUrl(remoteUrl);
     const clonePath = path.join(absolutePath, repoName);
 
     // Check if clone destination already exists to prevent data loss
@@ -418,7 +441,7 @@ router.post('/clone-progress', async (req, res) => {
 
     sendEvent('progress', { message: `Cloning into '${repoName}'...` });
 
-    const gitProcess = spawn('git', ['clone', '--progress', '--', githubUrl, clonePath], {
+    const gitProcess = spawn('git', ['clone', '--progress', '--', remoteUrl, clonePath], {
       stdio: ['ignore', 'pipe', 'pipe'],
       env: createGitCloneEnvironment(githubToken),
       shell: false,
@@ -502,7 +525,14 @@ router.get('/clone-progress', (req, res) => {
  */
 function cloneGitHubRepository(githubUrl, destinationPath, githubToken = null) {
   return new Promise((resolve, reject) => {
-    const gitProcess = spawn('git', ['clone', '--progress', '--', githubUrl, destinationPath], {
+    let remoteUrl;
+    try {
+      remoteUrl = assertSupportedRemoteUrl(githubUrl);
+    } catch (error) {
+      reject(error);
+      return;
+    }
+    const gitProcess = spawn('git', ['clone', '--progress', '--', remoteUrl, destinationPath], {
       stdio: ['ignore', 'pipe', 'pipe'],
       env: createGitCloneEnvironment(githubToken),
       shell: false,

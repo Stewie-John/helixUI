@@ -103,7 +103,7 @@ import { validateApiKey, authenticateToken, authenticateWebSocket } from './midd
 import { IS_PLATFORM } from './constants/config.js';
 import { TtlIdempotencyCache } from './utils/ttl-idempotency.js';
 import { filterClientInstanceTargets } from './utils/client-routing.js';
-import { resolvePathWithinRoot } from './utils/path-security.js';
+import { resolvePathWithinRoot, isSafePathSegment } from './utils/path-security.js';
 import { isAllowedRequestHost, isAllowedWebSocketOrigin } from './utils/request-origin.js';
 
 const VALID_PROVIDERS = ['claude', 'codex', 'cursor', 'gemini'];
@@ -813,6 +813,27 @@ app.get('/health', (req, res) => {
 
 // Optional API key validation (if configured)
 app.use('/api', validateApiKey);
+
+// 项目名与会话 ID 会被拼进 ~/.claude/projects 下的路径，其中若干分支会走到
+// fs.rm(recursive) / fs.unlink。Express 解码 %2F 后，`..%2F..%2Fhome` 这类取值
+// 能逃出根目录，所以在任何处理函数拿到它们之前统一拦掉。
+const rejectUnsafeSegment = (paramName) => (req, res, next, value) => {
+    if (!isSafePathSegment(value)) {
+        return res.status(400).json({ error: `Invalid ${paramName}` });
+    }
+    return next();
+};
+// 每个 Router 有独立的 param 栈，app.param 不会向下继承，必须逐个注册。
+for (const [router, params] of [
+    [app, ['projectName', 'sessionId']],
+    [foldersRoutes, ['projectName', 'sessionId']],
+    [taskmasterRoutes, ['projectName', 'fileName']],
+    [codexRoutes, ['sessionId']],
+    [cursorRoutes, ['sessionId']],
+    [geminiRoutes, ['sessionId']],
+]) {
+    for (const param of params) router.param(param, rejectUnsafeSegment(param));
+}
 
 // Authentication routes (public)
 app.use('/api/auth', authRoutes);
@@ -2478,26 +2499,19 @@ const uploadFilesHandler = async (req, res) => {
 
             console.log('[DEBUG] Project root:', projectRoot);
 
-            // Validate and resolve target path
-            // If targetPath is empty or '.', use project root directly
-            const targetDir = targetPath || '';
-            let resolvedTargetDir;
-
+            // 空 targetPath 也必须走校验：projectRoot 由 extractProjectDirectory 从项目名
+            // 反推而来（连字符还原成斜杠），`-etc` 会解析出 /etc。跳过校验就等于允许
+            // 往 WORKSPACES_ROOT 之外任意写文件。
+            const targetDir = targetPath || '.';
             console.log('[DEBUG] Target dir:', JSON.stringify(targetDir));
 
-            if (!targetDir || targetDir === '.' || targetDir === './') {
-                // Empty path means upload to project root
-                resolvedTargetDir = path.resolve(projectRoot);
-                console.log('[DEBUG] Using project root as target:', resolvedTargetDir);
-            } else {
-                const validation = await resolveFilePagePath(projectRoot, targetDir);
-                if (!validation.valid) {
-                    console.log('[DEBUG] Path validation failed:', validation.error);
-                    return res.status(403).json({ error: validation.error });
-                }
-                resolvedTargetDir = validation.resolved;
-                console.log('[DEBUG] Resolved target dir:', resolvedTargetDir);
+            const validation = await resolveFilePagePath(projectRoot, targetDir);
+            if (!validation.valid) {
+                console.log('[DEBUG] Path validation failed:', validation.error);
+                return res.status(403).json({ error: validation.error });
             }
+            const resolvedTargetDir = validation.resolved;
+            console.log('[DEBUG] Resolved target dir:', resolvedTargetDir);
 
             // Ensure target directory exists
             try {
@@ -3082,6 +3096,27 @@ function handleChatConnection(ws, authedUser) {
                 return;
             }
 
+            // Shell 通道已经把 cwd 限制在 WORKSPACES_ROOT 内，但 chat 通道之前直接
+            // 采信客户端传来的 projectPath/cwd。模型进程会以该目录为工作区读写文件，
+            // 等于允许任意一个已登录用户把 agent 指到服务器上的任何路径。
+            if (isCommandMessage) {
+                const requestedCwd = data.options?.projectPath || data.options?.cwd || null;
+                if (requestedCwd) {
+                    const cwdValidation = await validateWorkspacePath(requestedCwd);
+                    if (!cwdValidation.valid) {
+                        console.error('[WORKSPACE_GUARD] Rejecting command outside workspace root:', requestedCwd);
+                        commandWriter.send({
+                            type: `${commandProvider}-error`,
+                            error: `Unauthorized workspace path: ${requestedCwd}`,
+                            sessionId: data.options?.sessionId || data.sessionId || null,
+                            viewSessionId: commandViewSessionId,
+                            turnClientTs: Number(data.options?.clientTs || 0) || undefined,
+                        });
+                        return;
+                    }
+                }
+            }
+
             if (isCommandMessage) {
                 const topLevelSessionId = data.sessionId ?? null;
                 const optionSessionId = data.options?.sessionId ?? null;
@@ -3470,7 +3505,11 @@ function handleShellConnection(ws) {
                     : '';
                 const modelSuffix = provider === 'codex' && codexModel ? `_model_${codexModel}` : '';
                 const shellProviderKey = isPlainShell ? 'plain-shell' : provider;
-                ptySessionKey = `${projectPath}_${shellProviderKey}_${sessionId || 'default'}${modelSuffix}${commandSuffix}`;
+                // 会话键必须带上用户身份：否则在多用户模式下，两个人只要拼出同一个
+                // projectPath + sessionId，后连上的人就会直接接管前一个人的 PTY，
+                // 拿到对方的终端输出并能向其中输入命令。
+                const ptyOwnerId = ws.authUser?.id ?? 'anonymous';
+                ptySessionKey = `u${ptyOwnerId}_${projectPath}_${shellProviderKey}_${sessionId || 'default'}${modelSuffix}${commandSuffix}`;
 
                 // 注册 shell WebSocket 到 shellWsMap，接收 SDK 事件实时转发
                 if (sessionId && !isPlainShell) {
@@ -3952,7 +3991,12 @@ function handleShellConnection(ws) {
 app.post('/api/transcribe', authenticateToken, async (req, res) => {
     try {
         const multer = (await import('multer')).default;
-        const upload = multer({ storage: multer.memoryStorage() });
+        // memoryStorage 会把整个上传体读进堆内存，不设上限等于把进程内存交给调用方。
+        // 25MB 同时也是 OpenAI 音频转写接口自身的上限。
+        const upload = multer({
+            storage: multer.memoryStorage(),
+            limits: { fileSize: 25 * 1024 * 1024, files: 1 }
+        });
 
         // Handle multipart form data
         upload.single('audio')(req, res, async (err) => {
@@ -4658,6 +4702,16 @@ app.get('*', (req, res) => {
     }
 });
 
+// 兜底错误中间件：必须放在所有路由之后，且必须保留 4 个形参，否则 Express
+// 会把它当成普通中间件。没有它时，同步抛出的异常会变成一个挂死的请求。
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+    console.error(`[ERROR] Unhandled error on ${req.method} ${req.originalUrl}:`, err);
+    if (res.headersSent) return;
+    const status = Number.isInteger(err?.status) ? err.status : 500;
+    res.status(status).json({ error: status === 500 ? 'Internal server error' : err.message });
+});
+
 // Helper function to convert permissions to rwx format
 function permToRwx(perm) {
     const r = perm & 4 ? 'r' : '-';
@@ -4858,6 +4912,21 @@ async function startServer() {
         process.exit(1);
     }
 }
+
+// Node 15 起未处理的 Promise rejection 默认直接终止进程。这个 server 同时持有
+// 所有用户的 WebSocket、PTY 和模型会话，一个后台任务的疏漏不该把所有人踢下线。
+process.on('unhandledRejection', (reason) => {
+    console.error('[ERROR] Unhandled promise rejection:', reason);
+});
+
+// 客户端中途断开时，写入已关闭的 socket 会抛出 EPIPE/ECONNRESET，这类错误无需
+// 终止进程；其余情况说明进程状态已不可信，交给 systemd 拉起干净的实例。
+const RECOVERABLE_ERRORS = new Set(['EPIPE', 'ECONNRESET', 'ERR_STREAM_WRITE_AFTER_END']);
+process.on('uncaughtException', (error) => {
+    console.error('[ERROR] Uncaught exception:', error);
+    if (RECOVERABLE_ERRORS.has(error?.code)) return;
+    process.exit(1);
+});
 
 startServer();
 

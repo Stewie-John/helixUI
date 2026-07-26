@@ -1,6 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { timingSafeEqual } from 'node:crypto';
 import { userDb } from '../database/db.js';
 import { generateToken, authenticateToken, sendInvalidAuthToken, JWT_SECRET } from '../middleware/auth.js';
 
@@ -9,6 +10,9 @@ const AUTH_RATE_LIMIT_WINDOW_MS = Number.parseInt(process.env.AUTH_RATE_LIMIT_WI
 const AUTH_RATE_LIMIT_MAX = Number.parseInt(process.env.AUTH_RATE_LIMIT_MAX || '', 10) || 20;
 const AUTH_RATE_LIMIT_KEY_CAP = 5000;
 const MULTI_USER_ENABLED = process.env.ENABLE_MULTI_USER === 'true';
+// 空库时 /register 必须对外开放，否则没人能完成首装。若服务监听在非回环地址上，
+// 这个窗口等于把 admin 账号让给最先访问的人。设置 SETUP_TOKEN 即可关上窗口。
+const SETUP_TOKEN = process.env.SETUP_TOKEN || '';
 const authAttempts = new Map();
 
 const pruneAuthAttempts = (now) => {
@@ -51,6 +55,7 @@ router.get('/status', async (req, res) => {
       needsSetup: !hasUsers,
       isAuthenticated: false, // Will be overridden by frontend if token exists
       multiUserEnabled: MULTI_USER_ENABLED,
+      setupTokenRequired: !hasUsers && Boolean(SETUP_TOKEN),
     });
   } catch (error) {
     console.error('Auth status error:', error);
@@ -77,6 +82,16 @@ router.post('/register', authRateLimit, async (req, res) => {
 
     const hasUsers = await userDb.hasUsers();
     const isFirstUser = !hasUsers;
+
+    if (isFirstUser && SETUP_TOKEN) {
+      const provided = String(req.headers['x-setup-token'] || req.body.setupToken || '');
+      const expected = Buffer.from(SETUP_TOKEN);
+      const actual = Buffer.from(provided);
+      const matches = expected.length === actual.length && timingSafeEqual(expected, actual);
+      if (!matches) {
+        return res.status(403).json({ error: 'Invalid or missing setup token' });
+      }
+    }
 
     if (!isFirstUser && !MULTI_USER_ENABLED) {
       return res.status(403).json({
