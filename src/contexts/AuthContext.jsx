@@ -13,6 +13,7 @@ const AuthContext = createContext({
   updateUser: () => {},
   isLoading: true,
   needsSetup: false,
+  setupTokenRequired: false,
   hasCompletedOnboarding: true,
   refreshOnboardingStatus: () => {},
   error: null
@@ -31,6 +32,7 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem('auth-token'));
   const [isLoading, setIsLoading] = useState(true);
   const [needsSetup, setNeedsSetup] = useState(false);
+  const [setupTokenRequired, setSetupTokenRequired] = useState(false);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(true);
   const [error, setError] = useState(null);
 
@@ -88,6 +90,7 @@ export const AuthProvider = ({ children }) => {
 
         if (statusData.needsSetup) {
           setNeedsSetup(true);
+          setSetupTokenRequired(Boolean(statusData.setupTokenRequired));
           setIsLoading(false);
           return;
         }
@@ -114,6 +117,7 @@ export const AuthProvider = ({ children }) => {
         const statusData = await statusResponse.json();
         if (statusData.needsSetup) {
           setNeedsSetup(true);
+          setSetupTokenRequired(Boolean(statusData.setupTokenRequired));
         }
       }
     } catch (error) {
@@ -148,10 +152,10 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (username, password) => {
+  const register = async (username, password, setupToken) => {
     try {
       setError(null);
-      const response = await api.auth.register(username, password);
+      const response = await api.auth.register(username, password, setupToken);
 
       const data = await response.json();
 
@@ -234,6 +238,7 @@ export const AuthProvider = ({ children }) => {
     updateUser,
     isLoading,
     needsSetup,
+    setupTokenRequired,
     hasCompletedOnboarding,
     refreshOnboardingStatus,
     error

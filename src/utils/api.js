@@ -51,9 +51,12 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
     }),
-    register: (username, password) => fetch('/api/auth/register', {
+    register: (username, password, setupToken) => fetch('/api/auth/register', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(setupToken ? { 'X-Setup-Token': setupToken } : {}),
+      },
       body: JSON.stringify({ username, password }),
     }),
     // 管理员创建账号：复用 /register，但走 authenticatedFetch 自动带上 admin 的 bearer token

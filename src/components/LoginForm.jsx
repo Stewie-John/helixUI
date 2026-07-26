@@ -82,7 +82,7 @@ const LoginForm = () => {
             </div>
 
             {error && (
-              <div className="p-3 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-800 rounded-md">
+              <div role="alert" className="p-3 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-800 rounded-md">
                 <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
               </div>
             )}
@@ -98,7 +98,7 @@ const LoginForm = () => {
 
           <div className="text-center">
             <p className="text-xs text-muted-foreground">
-              账号由管理员创建，如需开通请联系管理员
+              {t('login.adminOnlyNotice')}
             </p>
           </div>
         </div>
