@@ -133,7 +133,7 @@ export default function EditorSidebar({
       )}
 
       <div
-        className={`border-l border-gray-200 dark:border-gray-700 h-full overflow-hidden ${useFlexLayout ? 'flex-1 min-w-0' : `flex-shrink-0 min-w-[${MIN_EDITOR_WIDTH}px]`}`}
+        className={`${editorExpanded ? '' : 'border-l border-gray-200 dark:border-gray-700'} h-full overflow-hidden ${useFlexLayout ? 'flex-1 min-w-0' : `flex-shrink-0 min-w-[${MIN_EDITOR_WIDTH}px]`}`}
         style={useFlexLayout ? undefined : { width: `${effectiveWidth}px`, minWidth: `${MIN_EDITOR_WIDTH}px` }}
       >
         <CodeEditor

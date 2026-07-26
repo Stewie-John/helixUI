@@ -150,7 +150,6 @@ export default function AppContent() {
     return () => window.removeEventListener('hud-panel-pos', handleHudPanelPos);
   }, [showTechDecor]);
 
-  const showInputSeparator = activeTab !== 'files';
   const showHudPanels = showTechDecor && activeTab !== 'files';
 
   return (
@@ -169,9 +168,9 @@ export default function AppContent() {
           provider={selectedSession?.__provider}
         />
       )}
-      {showTechDecor && (
+      {showHudPanels && (
         <div className={`tech-layout-line-overlay ${isInputFocused ? 'tech-input-focused' : ''}`} aria-hidden="true">
-          {showInputSeparator && <span className="tech-input-separator-line" />}
+          <span className="tech-input-separator-line" />
         </div>
       )}
       {!isMobile ? (

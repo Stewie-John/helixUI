@@ -59,6 +59,18 @@ export default function CodeEditorHeader({
 
   return (
     <div className="flex items-center justify-between px-3 py-1.5 border-b border-border flex-shrink-0 min-w-0 gap-2">
+      {isSidebar && onToggleExpand && (
+        <button
+          type="button"
+          onClick={onToggleExpand}
+          className="icon-btn h-8 w-8 shrink-0 border border-cyan-500/40 bg-cyan-500/10 text-cyan-600 dark:text-cyan-300 hover:bg-cyan-500/20 flex items-center justify-center"
+          title={isExpanded ? labels.showFileTree : labels.hideFileTree}
+          aria-label={isExpanded ? labels.showFileTree : labels.hideFileTree}
+        >
+          {isExpanded ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+        </button>
+      )}
+
       {/* File info - can shrink */}
       <div className="flex items-center gap-2 min-w-0 flex-1 shrink">
         <div className="min-w-0 shrink">
@@ -76,17 +88,6 @@ export default function CodeEditorHeader({
 
       {/* Buttons - don't shrink, always visible */}
       <div className="flex items-center gap-0.5 shrink-0">
-        {isSidebar && onToggleExpand && (
-          <button
-            type="button"
-            onClick={onToggleExpand}
-            className="icon-btn p-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center"
-            title={isExpanded ? labels.showFileTree : labels.hideFileTree}
-          >
-            {isExpanded ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
-          </button>
-        )}
-
         {isMarkdownFile && (
           <button
             type="button"

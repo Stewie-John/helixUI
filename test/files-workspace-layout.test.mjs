@@ -8,20 +8,24 @@ const readSource = (relativePath) => readFile(
 );
 
 test('Files uses the HUD space and exposes a persistent file-tree toggle', async () => {
-  const [app, editor, header] = await Promise.all([
+  const [app, editor, header, sidebar] = await Promise.all([
     readSource('src/components/app/AppContent.tsx'),
     readSource('src/components/code-editor/view/CodeEditor.tsx'),
     readSource('src/components/code-editor/view/subcomponents/CodeEditorHeader.tsx'),
+    readSource('src/components/code-editor/view/EditorSidebar.tsx'),
   ]);
 
   assert.match(app, /const showHudPanels = showTechDecor && activeTab !== 'files'/);
   assert.match(app, /\{showHudPanels && \(/);
   assert.match(app, /style=\{showHudPanels \? \{ paddingRight:/);
+  assert.doesNotMatch(app, /showInputSeparator/);
   assert.match(header, /PanelLeftClose/);
   assert.match(header, /PanelLeftOpen/);
   assert.match(header, /onClick=\{onToggleExpand\}/);
+  assert.match(header, /aria-label=\{isExpanded \? labels\.showFileTree : labels\.hideFileTree\}/);
   assert.match(editor, /onToggleExpand=\{onToggleExpand\}/);
   assert.match(editor, /onToggleExpand: null/);
+  assert.match(sidebar, /editorExpanded \? '' : 'border-l border-gray-200 dark:border-gray-700'/);
 });
 
 test('chat Markdown opens local text links internally without intercepting web links', async () => {
