@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../../ui/button';
+import { useEscapeKey } from '../../../../hooks/useEscapeKey';
 import { Input } from '../../../ui/input';
 import { DEFAULT_CODEX_MCP_FORM } from '../../constants/constants';
 import type { CodexMcpFormState, McpServer } from '../../types/types';
@@ -51,6 +52,8 @@ export default function CodexMcpFormModal({
     setFormData(DEFAULT_CODEX_MCP_FORM);
   }, [editingServer, isOpen]);
 
+  useEscapeKey(isOpen, onClose);
+
   if (!isOpen) {
     return null;
   }
@@ -70,9 +73,14 @@ export default function CodexMcpFormModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[110] p-4">
-      <div className="bg-background border border-border rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="codex-mcp-form-title"
+        className="bg-background border border-border rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto"
+      >
         <div className="flex items-center justify-between p-4 border-b border-border">
-          <h3 className="text-lg font-medium text-foreground">
+          <h3 id="codex-mcp-form-title" className="text-lg font-medium text-foreground">
             {editingServer ? t('mcpForm.title.edit') : t('mcpForm.title.add')}
           </h3>
           <Button variant="ghost" size="sm" onClick={onClose}>

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '../../../ui/input';
+import { useEscapeKey } from '../../../../hooks/useEscapeKey';
 import { Button } from '../../../ui/button';
 import { DEFAULT_CLAUDE_MCP_FORM } from '../../constants/constants';
 import type { ClaudeMcpFormState, McpServer, McpScope, McpTransportType, SettingsProject } from '../../types/types';
@@ -95,6 +96,8 @@ export default function ClaudeMcpFormModal({
     return Boolean(formData.config.url.trim());
   }, [formData, jsonValidationError]);
 
+  useEscapeKey(isOpen, onClose);
+
   if (!isOpen) {
     return null;
   }
@@ -149,9 +152,14 @@ export default function ClaudeMcpFormModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[110] p-4">
-      <div className="bg-background border border-border rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="claude-mcp-form-title"
+        className="bg-background border border-border rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+      >
         <div className="flex items-center justify-between p-4 border-b border-border">
-          <h3 className="text-lg font-medium text-foreground">
+          <h3 id="claude-mcp-form-title" className="text-lg font-medium text-foreground">
             {isEditing ? t('mcpForm.title.edit') : t('mcpForm.title.add')}
           </h3>
           <Button variant="ghost" size="sm" onClick={onClose}>

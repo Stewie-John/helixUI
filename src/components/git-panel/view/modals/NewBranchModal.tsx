@@ -1,5 +1,6 @@
 import { Plus, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useEscapeKey } from '../../../../hooks/useEscapeKey';
 
 type NewBranchModalProps = {
   isOpen: boolean;
@@ -43,6 +44,8 @@ export default function NewBranchModal({
     }
   };
 
+  useEscapeKey(isOpen && !isCreatingBranch, onClose);
+
   if (!isOpen) {
     return null;
   }
@@ -57,7 +60,9 @@ export default function NewBranchModal({
         aria-labelledby="new-branch-title"
       >
         <div className="p-6">
-          <h3 className="text-lg font-semibold text-foreground mb-4">Create New Branch</h3>
+          <h3 id="new-branch-title" className="text-lg font-semibold text-foreground mb-4">
+            Create New Branch
+          </h3>
 
           <div className="mb-4">
             <label htmlFor="git-new-branch-name" className="block text-sm font-medium text-foreground/80 mb-2">

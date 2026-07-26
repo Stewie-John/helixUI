@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../../ui/button';
+import { useEscapeKey } from '../../../../hooks/useEscapeKey';
 
 type Props = {
   isOpen: boolean;
@@ -37,6 +38,8 @@ export default function SidebarFolderDeleteConfirm({
     };
   }, [isOpen, fetchCounts]);
 
+  useEscapeKey(isOpen && !submitting, onCancel);
+
   if (!isOpen) return null;
 
   const sessionCount = counts?.sessions ?? 0;
@@ -62,6 +65,9 @@ export default function SidebarFolderDeleteConfirm({
       onClick={onCancel}
     >
       <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="folder-delete-title"
         className="w-full max-w-sm bg-card border border-border rounded-lg shadow-xl p-5"
         onClick={(e) => e.stopPropagation()}
       >
@@ -70,7 +76,9 @@ export default function SidebarFolderDeleteConfirm({
             <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold text-foreground">{t('folders.delete.title')}</h3>
+            <h3 id="folder-delete-title" className="text-sm font-semibold text-foreground">
+              {t('folders.delete.title')}
+            </h3>
             <p className="text-xs text-muted-foreground mt-1 break-all">「{folderName}」</p>
           </div>
           <button

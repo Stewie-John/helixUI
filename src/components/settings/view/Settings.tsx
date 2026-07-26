@@ -13,6 +13,7 @@ import TasksSettingsTab from '../view/tabs/tasks-settings/TasksSettingsTab';
 import UsersSettingsTab from '../view/tabs/users-settings/UsersSettingsTab';
 import { useSettingsController } from '../hooks/useSettingsController';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useEscapeKey } from '../../../hooks/useEscapeKey';
 import type { AgentProvider, SettingsProject, SettingsProps } from '../types/types';
 
 type LoginModalProps = {
@@ -86,6 +87,9 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }: Set
     onClose,
   });
 
+  // 嵌套模态框打开时把 Escape 让给它，否则一次按键会连带关掉整个设置面板。
+  useEscapeKey(isOpen && !showLoginModal && !showMcpForm && !showCodexMcpForm, onClose);
+
   if (!isOpen) {
     return null;
   }
@@ -100,11 +104,18 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }: Set
 
   return (
     <div className="modal-backdrop fixed inset-0 flex items-center justify-center z-[9999] md:p-4 bg-background/95">
-      <div className="bg-background border border-border md:rounded-lg shadow-xl w-full md:max-w-4xl h-full md:h-[90vh] flex flex-col">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-modal-title"
+        className="bg-background border border-border md:rounded-lg shadow-xl w-full md:max-w-4xl h-full md:h-[90vh] flex flex-col"
+      >
         <div className="flex items-center justify-between p-4 md:p-6 border-b border-border flex-shrink-0">
           <div className="flex items-center gap-3">
             <SettingsIcon className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
-            <h2 className="text-lg md:text-xl font-semibold text-foreground">{t('title')}</h2>
+            <h2 id="settings-modal-title" className="text-lg md:text-xl font-semibold text-foreground">
+              {t('title')}
+            </h2>
           </div>
           <Button
             variant="ghost"
