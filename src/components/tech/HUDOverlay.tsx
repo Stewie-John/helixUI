@@ -582,7 +582,9 @@ function useGptQuota() {
 }
 
 function useActiveProvider(sessionProvider?: string | null) {
-  const readProvider = () => sessionProvider || localStorage.getItem('selected-provider') || 'claude';
+  // selected-provider 优先于 sessionProvider：前者由下拉框和会话切换共同实时同步，
+  // 后者是会话创建时固化的历史值。反过来取会让手动切换 provider 后额度面板卡在旧供应商。
+  const readProvider = () => localStorage.getItem('selected-provider') || sessionProvider || 'claude';
   const [provider, setProvider] = useState(readProvider);
 
   useEffect(() => {
