@@ -257,7 +257,7 @@ function readClaudeNativeStatus() {
     const fail = (error) => {
       if (settled) return;
       const parsed = parseClaudeUsageOutput(output);
-      if (parsed.limits.length >= 2) {
+      if (parsed.limits.length > 0) {
         finish(parsed);
         return;
       }
@@ -288,8 +288,12 @@ function readClaudeNativeStatus() {
     proc.onData((data) => {
       output += data;
       const parsed = parseClaudeUsageOutput(output);
-      // 至少拿到 2 条限额（session + week）才算主限额就绪
-      if (parsed.limits.length < 2) return;
+      // 拿到任意一条限额即视为主限额就绪。不能要求 >=2：Claude Code v2.1.x 起
+      // /usage 只同屏渲染 Current session，周限额改由 `w` 键切换到另一视图，
+      // 旧的 >=2 条件在新版永远不成立，会一直空转到超时。
+      // 真正的「渲染完毕」信号是下面的超额块（Extra usage）已落定——它排在
+      // 所有主限额之后渲染，因此旧版布局仍会等到周限额出现才收工。
+      if (parsed.limits.length === 0) return;
 
       // 超额块（Extra usage）是异步加载的，排在 "Scanning local sessions…" 之后，
       // 远晚于主限额渲染。判断它是否已"尘埃落定"：解析到 extra 行 / 出现金额行 /
