@@ -619,33 +619,36 @@ function transformMessage(sdkMessage) {
  * @param {Object} resultMessage - SDK result message
  * @returns {Object|null} Token budget object or null
  */
-function extractTokenBudget(resultMessage) {
-  if (resultMessage.type !== 'result' || !resultMessage.modelUsage) {
+function extractTokenBudget(resultMessage, latestAssistantUsage) {
+  if (resultMessage.type !== 'result') {
     return null;
   }
 
-  // Get the first model's usage data
-  const modelKey = Object.keys(resultMessage.modelUsage)[0];
-  const modelData = resultMessage.modelUsage[modelKey];
+  // modelUsage 是整个会话的累计账单（每轮的 cache_read 都会叠加），不是上下文占用。
+  // 用它驱动上下文轮盘会让数值无上限增长（实测单会话可达数百万），因此这里只取
+  // 它的 contextWindow 作为分母，分子改用最近一条 assistant 消息的 usage。
+  const modelKey = Object.keys(resultMessage.modelUsage || {})[0];
+  const modelData = modelKey ? resultMessage.modelUsage[modelKey] : null;
 
-  if (!modelData) {
+  // 上下文占用 = 本轮最后一次请求的 input + 两类 cache（与 /token-usage 接口口径一致，
+  // 排除 output_tokens：输出不占用下一轮之前的上下文快照）。
+  const usage = latestAssistantUsage || resultMessage.usage;
+  if (!usage) {
+    return null;
+  }
+  const inputTokens = usage.input_tokens || 0;
+  const cacheReadTokens = usage.cache_read_input_tokens || 0;
+  const cacheCreationTokens = usage.cache_creation_input_tokens || 0;
+  const totalUsed = inputTokens + cacheReadTokens + cacheCreationTokens;
+  if (totalUsed <= 0) {
     return null;
   }
 
-  // Use cumulative tokens if available (tracks total for the session)
-  // Otherwise fall back to per-request tokens
-  const inputTokens = modelData.cumulativeInputTokens || modelData.inputTokens || 0;
-  const outputTokens = modelData.cumulativeOutputTokens || modelData.outputTokens || 0;
-  const cacheReadTokens = modelData.cumulativeCacheReadInputTokens || modelData.cacheReadInputTokens || 0;
-  const cacheCreationTokens = modelData.cumulativeCacheCreationInputTokens || modelData.cacheCreationInputTokens || 0;
+  // 分母优先取 SDK 上报的真实窗口，避免硬编码与 1M context 等变体不符
+  const contextWindow =
+    Number(modelData?.contextWindow) || parseInt(process.env.CONTEXT_WINDOW) || 200000;
 
-  // Total used = input + output + cache tokens
-  const totalUsed = inputTokens + outputTokens + cacheReadTokens + cacheCreationTokens;
-
-  // 现代 Claude 模型（Sonnet 4.6 / Opus 4.8 / Haiku 4.5）上下文窗口均为 200K
-  const contextWindow = parseInt(process.env.CONTEXT_WINDOW) || 200000;
-
-  console.log(`Token calculation: input=${inputTokens}, output=${outputTokens}, cache=${cacheReadTokens + cacheCreationTokens}, total=${totalUsed}/${contextWindow}`);
+  console.log(`Token calculation: input=${inputTokens}, cache=${cacheReadTokens + cacheCreationTokens}, context=${totalUsed}/${contextWindow}`);
 
   return {
     used: totalUsed,
@@ -954,7 +957,12 @@ async function queryClaudeSDK(command, options = {}, ws, _compactRetry = 0) {
 
     // Process streaming messages
     console.log('Starting async generator loop for session:', capturedSessionId || 'NEW');
+    // 最近一条 assistant 消息的 usage：上下文轮盘的权威分子（见 extractTokenBudget）
+    let latestAssistantUsage = null;
     for await (const message of queryInstance) {
+      if (message.type === 'assistant' && message.message?.usage) {
+        latestAssistantUsage = message.message.usage;
+      }
       // Capture session ID from first message
       if (message.session_id && !capturedSessionId) {
 
@@ -1057,9 +1065,9 @@ async function queryClaudeSDK(command, options = {}, ws, _compactRetry = 0) {
         if (models.length > 0) {
           console.log("---> Model was sent using:", models);
         }
-        const tokenBudget = extractTokenBudget(message);
+        const tokenBudget = extractTokenBudget(message, latestAssistantUsage);
         if (tokenBudget) {
-          console.log('Token budget from modelUsage:', tokenBudget);
+          console.log('Token budget (context occupancy):', tokenBudget);
           ws.send({
             type: 'token-budget',
             data: tokenBudget,

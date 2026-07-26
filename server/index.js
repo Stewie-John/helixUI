@@ -4512,7 +4512,7 @@ app.get('/api/projects/:projectName/sessions/:sessionId/token-usage', authentica
             throw error; // Re-throw other errors to be caught by outer try-catch
         }
         const parsedContextWindow = parseInt(process.env.CONTEXT_WINDOW, 10);
-        const contextWindow = Number.isFinite(parsedContextWindow) ? parsedContextWindow : 160000;
+        const contextWindow = Number.isFinite(parsedContextWindow) ? parsedContextWindow : 200000;
         let inputTokens = 0;
         let cacheCreationTokens = 0;
         let cacheReadTokens = 0;
