@@ -1,24 +1,13 @@
 import type { Project, SessionProvider } from '../../../types/app';
 
-const HIDDEN_SESSION_IDS_KEY = 'compactContinuationHiddenSessionIds';
-const SESSION_ALIASES_KEY = 'compactContinuationSessionAliases';
-const SESSION_PROVIDERS_KEY = 'compactContinuationSessionProviders';
-const SESSION_PROJECTS_KEY = 'compactContinuationSessionProjects';
-
-// Deployment-specific repairs belong in local runtime data and must never be
-// committed to the distributable source tree.
-const MANUAL_CONTINUATION_REPAIRS: Array<{
-  projectName: string;
-  visibleSessionId: string;
-  provider: SessionProvider;
-  continuationSessionIds: string[];
-}> = [];
-
-const MANUALLY_ABSORBED_CONTINUATION_IDS = new Set(
-  MANUAL_CONTINUATION_REPAIRS.flatMap((repair) => repair.continuationSessionIds),
-);
-
-const MANUAL_UNHIDE_SESSION_IDS = new Set<string>();
+// V1 inferred continuation chains from timestamps and project membership. Two
+// independent conversations in the same directory could therefore be joined.
+// Use a new namespace so those unverifiable aliases cannot affect routing.
+const CONTINUATION_STORAGE_VERSION = 'v2';
+const HIDDEN_SESSION_IDS_KEY = `compactContinuationHiddenSessionIds:${CONTINUATION_STORAGE_VERSION}`;
+const SESSION_ALIASES_KEY = `compactContinuationSessionAliases:${CONTINUATION_STORAGE_VERSION}`;
+const SESSION_PROVIDERS_KEY = `compactContinuationSessionProviders:${CONTINUATION_STORAGE_VERSION}`;
+const SESSION_PROJECTS_KEY = `compactContinuationSessionProjects:${CONTINUATION_STORAGE_VERSION}`;
 
 const canUseLocalStorage = () => typeof window !== 'undefined' && Boolean(window.localStorage);
 
@@ -148,14 +137,11 @@ const isSessionProjectCompatible = (
 };
 
 export const getCompactContinuationHiddenSessionIds = (): Set<string> => {
-  const ids = readStringArray(HIDDEN_SESSION_IDS_KEY).filter(
-    (id) => !MANUAL_UNHIDE_SESSION_IDS.has(id),
-  );
-  return new Set(ids);
+  return new Set(readStringArray(HIDDEN_SESSION_IDS_KEY));
 };
 
 export const getManuallyAbsorbedContinuationSessionIds = (): Set<string> =>
-  new Set(MANUALLY_ABSORBED_CONTINUATION_IDS);
+  new Set<string>();
 
 type CompactContinuationSessionLike = {
   id?: string | null;
@@ -169,250 +155,14 @@ type CompactContinuationSessionLike = {
   isCompactContinuation?: boolean | null;
 };
 
-const getContinuationSessionTime = (session: CompactContinuationSessionLike): number => {
-  const value = session.lastActivity || session.updated_at || session.createdAt;
-  const parsed = value instanceof Date ? value.getTime() : Date.parse(String(value || ''));
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
-const isProviderHandoffSummary = (summary: unknown): boolean =>
-  typeof summary === 'string' && summary.startsWith('The visible conversation is switching from ');
-
 export const repairCompactContinuationChainForProject = (
-  projectName: string | null | undefined,
-  sessions: CompactContinuationSessionLike[],
+  _projectName: string | null | undefined,
+  _sessions: CompactContinuationSessionLike[],
 ): boolean => {
-  if (!projectName || !sessions.length || !canUseLocalStorage()) return false;
-
-  let manualRepairApplied = false;
-  for (const repair of MANUAL_CONTINUATION_REPAIRS) {
-    if (repair.projectName !== projectName) continue;
-
-    const visibleExists = sessions.some((session) => session.id === repair.visibleSessionId);
-    const continuationIds = repair.continuationSessionIds.filter((continuationSessionId) =>
-      sessions.some((session) => session.id === continuationSessionId),
-    );
-    if (!visibleExists || continuationIds.length === 0) continue;
-
-    const aliases = readAliases();
-    const aliasesBefore = JSON.stringify(aliases);
-    delete aliases[repair.visibleSessionId];
-    for (const continuationId of continuationIds) {
-      delete aliases[continuationId];
-    }
-    for (const [sourceId, targetId] of Object.entries({ ...aliases })) {
-      if (continuationIds.includes(targetId)) {
-        delete aliases[sourceId];
-      }
-    }
-    aliases[repair.visibleSessionId] = continuationIds[continuationIds.length - 1];
-    if (JSON.stringify(aliases) !== aliasesBefore) {
-      writeAliases(aliases);
-      manualRepairApplied = true;
-    }
-
-    const existingHiddenIds = readStringArray(HIDDEN_SESSION_IDS_KEY);
-    const safeToHide = continuationIds.filter((id) => !MANUAL_UNHIDE_SESSION_IDS.has(id));
-    if (safeToHide.some((continuationId) => !existingHiddenIds.includes(continuationId))) {
-      writeStringArray(HIDDEN_SESSION_IDS_KEY, [
-        ...existingHiddenIds,
-        ...safeToHide,
-      ]);
-      manualRepairApplied = true;
-    }
-
-    const providers = readProviders();
-    const providersBefore = JSON.stringify(providers);
-    delete providers[repair.visibleSessionId];
-    for (const continuationId of continuationIds) {
-      providers[continuationId] = repair.provider;
-    }
-    if (JSON.stringify(providers) !== providersBefore) {
-      writeProviders(providers);
-      manualRepairApplied = true;
-    }
-
-    const projects = readProjects();
-    const projectsBefore = JSON.stringify(projects);
-    projects[repair.visibleSessionId] = projectName;
-    for (const continuationId of continuationIds) {
-      projects[continuationId] = projectName;
-    }
-    if (JSON.stringify(projects) !== projectsBefore) {
-      writeProjects(projects);
-      manualRepairApplied = true;
-    }
-  }
-
-  const compactSessions = sessions
-    .filter((session) =>
-      session.id &&
-      session.isCompactContinuation &&
-      String(session.__provider || session.provider || '') === 'codex' &&
-      !MANUAL_UNHIDE_SESSION_IDS.has(String(session.id)),
-    )
-    .sort((a, b) => getContinuationSessionTime(a) - getContinuationSessionTime(b));
-
-  if (compactSessions.length) {
-    const compactIds = new Set(compactSessions.map((session) => String(session.id)));
-    const sessionById = new Map(
-      sessions
-        .filter((session) => session.id)
-        .map((session) => [String(session.id), session] as const),
-    );
-    const aliases = readAliases();
-    let changed = false;
-
-    for (const [visibleSourceId, currentTargetId] of Object.entries({ ...aliases })) {
-      const visibleSource = sessionById.get(visibleSourceId);
-      const currentTarget = sessionById.get(currentTargetId);
-      if (!visibleSource || !currentTarget || !compactIds.has(currentTargetId)) continue;
-
-      const targetTime = getContinuationSessionTime(currentTarget);
-      const extensions = compactSessions
-        .filter((session) => String(session.id) !== visibleSourceId)
-        .filter((session) => getContinuationSessionTime(session) > targetTime);
-      if (!extensions.length) continue;
-
-      aliases[visibleSourceId] = String(extensions[extensions.length - 1].id);
-      const hiddenIds = readStringArray(HIDDEN_SESSION_IDS_KEY);
-      const extensionIds = extensions.map((session) => String(session.id));
-      if (extensionIds.some((id) => !hiddenIds.includes(id))) {
-        writeStringArray(HIDDEN_SESSION_IDS_KEY, [...hiddenIds, ...extensionIds]);
-        changed = true;
-      }
-
-      const providers = readProviders();
-      const providersBefore = JSON.stringify(providers);
-      providers[visibleSourceId] = 'codex';
-      for (const id of extensionIds) {
-        providers[id] = 'codex';
-      }
-      if (JSON.stringify(providers) !== providersBefore) {
-        writeProviders(providers);
-        changed = true;
-      }
-
-      const projects = readProjects();
-      const projectsBefore = JSON.stringify(projects);
-      projects[visibleSourceId] = projectName;
-      for (const id of extensionIds) {
-        projects[id] = projectName;
-      }
-      if (JSON.stringify(projects) !== projectsBefore) {
-        writeProjects(projects);
-        changed = true;
-      }
-    }
-
-    const aliasesBefore = JSON.stringify(readAliases());
-    if (JSON.stringify(aliases) !== aliasesBefore) {
-      writeAliases(aliases);
-      changed = true;
-    }
-
-    manualRepairApplied = manualRepairApplied || changed;
-  }
-
-  const handoffSessions = sessions
-    .filter((session) =>
-      session.id &&
-      !MANUALLY_ABSORBED_CONTINUATION_IDS.has(String(session.id)) &&
-      (session.__provider || session.provider) &&
-      isProviderHandoffSummary(session.summary),
-    )
-    .sort((a, b) => getContinuationSessionTime(a) - getContinuationSessionTime(b));
-  if (!handoffSessions.length) return manualRepairApplied;
-
-  const handoffIds = new Set(handoffSessions.map((session) => String(session.id)));
-  const aliases = readAliases();
-  let visibleSources = Array.from(new Set(
-    Object.entries(aliases)
-      .filter(([, continuationSessionId]) => handoffIds.has(continuationSessionId))
-      .map(([visibleSessionId]) => visibleSessionId)
-      .filter((visibleSessionId) => !handoffIds.has(visibleSessionId)),
-  ));
-
-  if (visibleSources.length === 0) {
-    const titleMatchedSources = sessions
-      .filter((session) => {
-        const provider = session.__provider || session.provider;
-        const title = `${session.summary || ''} ${session.name || ''}`;
-        return provider === 'claude' && session.id && title.includes('数据集切分');
-      })
-      .map((session) => String(session.id));
-    if (titleMatchedSources.length === 1) {
-      visibleSources = titleMatchedSources;
-    }
-  }
-
-  if (visibleSources.length !== 1) return false;
-
-  const visibleSourceId = visibleSources[0];
-  let changed = false;
-
-  const aliasesBefore = JSON.stringify(aliases);
-  aliases[visibleSourceId] = String(handoffSessions[0].id);
-  for (let index = 0; index < handoffSessions.length; index += 1) {
-    const currentId = String(handoffSessions[index].id);
-    const nextId = handoffSessions[index + 1]?.id ? String(handoffSessions[index + 1].id) : null;
-    if (nextId) {
-      aliases[currentId] = nextId;
-    } else if (aliases[currentId]) {
-      delete aliases[currentId];
-    }
-  }
-
-  for (const [sourceId, targetId] of Object.entries({ ...aliases })) {
-    if (
-      sourceId !== visibleSourceId &&
-      !handoffIds.has(sourceId) &&
-      handoffIds.has(targetId)
-    ) {
-      delete aliases[sourceId];
-    }
-  }
-  if (JSON.stringify(aliases) !== aliasesBefore) {
-    writeAliases(aliases);
-    changed = true;
-  }
-
-  const existingHiddenIds = readStringArray(HIDDEN_SESSION_IDS_KEY);
-  const newHandoffIds = Array.from(handoffIds).filter((id) => !MANUAL_UNHIDE_SESSION_IDS.has(id));
-  if (newHandoffIds.some((handoffId) => !existingHiddenIds.includes(handoffId))) {
-    writeStringArray(HIDDEN_SESSION_IDS_KEY, [
-      ...existingHiddenIds,
-      ...newHandoffIds,
-    ]);
-    changed = true;
-  }
-
-  const provider = String(handoffSessions[handoffSessions.length - 1].__provider || handoffSessions[handoffSessions.length - 1].provider || '');
-  if (provider) {
-    const providers = readProviders();
-    const providersBefore = JSON.stringify(providers);
-    providers[visibleSourceId] = provider;
-    for (const handoffId of handoffIds) {
-      providers[handoffId] = provider;
-    }
-    if (JSON.stringify(providers) !== providersBefore) {
-      writeProviders(providers);
-      changed = true;
-    }
-  }
-
-  const projects = readProjects();
-  const projectsBefore = JSON.stringify(projects);
-  projects[visibleSourceId] = projectName;
-  for (const handoffId of handoffIds) {
-    projects[handoffId] = projectName;
-  }
-  if (JSON.stringify(projects) !== projectsBefore) {
-    writeProjects(projects);
-    changed = true;
-  }
-
-  return changed;
+  // Continuation identity is a routing decision, so it must come from the
+  // explicit session-created flow. Project membership, timestamps, titles and
+  // provider names are not sufficient evidence and must never create aliases.
+  return false;
 };
 
 export const rememberCompactContinuationSession = (
@@ -422,7 +172,6 @@ export const rememberCompactContinuationSession = (
   projectName?: string | null,
 ) => {
   if (!visibleSessionId || !continuationSessionId || visibleSessionId === continuationSessionId) return;
-  if (MANUAL_UNHIDE_SESSION_IDS.has(continuationSessionId)) return;
 
   writeStringArray(HIDDEN_SESSION_IDS_KEY, [
     ...readStringArray(HIDDEN_SESSION_IDS_KEY),
