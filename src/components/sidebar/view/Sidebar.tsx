@@ -50,6 +50,17 @@ function Sidebar({
   const { setCurrentProject, mcpServerStatus } = useTaskMaster() as TaskMasterSidebarContext;
   const { tasksEnabled } = useTasksSettings();
 
+  useEffect(() => {
+    const shouldShowSidebar = activeTab !== 'files';
+    if (sidebarVisible !== shouldShowSidebar) {
+      setPreference('sidebarVisible', shouldShowSidebar);
+    }
+
+    // Set the default only when the workspace changes. Manual toggles should
+    // remain effective until the user enters another workspace.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
   const {
     isSidebarCollapsed,
     expandedProjects,

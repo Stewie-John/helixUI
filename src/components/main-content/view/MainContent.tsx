@@ -73,6 +73,7 @@ function MainContent({
     handleCloseEditor,
     handleToggleEditorExpand,
     handleResizeStart,
+    handleResizeKeyDown,
   } = useEditorSidebar({
     selectedProject,
     isMobile,
@@ -246,6 +247,7 @@ function MainContent({
               hasManualWidth={hasManualWidth}
               resizeHandleRef={resizeHandleRef}
               onResizeStart={handleResizeStart}
+              onResizeKeyDown={handleResizeKeyDown}
               onCloseEditor={handleCloseEditor}
               onToggleEditorExpand={handleToggleEditorExpand}
               projectPath={selectedProject.path}

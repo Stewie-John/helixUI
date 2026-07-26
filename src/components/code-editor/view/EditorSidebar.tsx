@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
-import type { MouseEvent, MutableRefObject } from 'react';
+import type { KeyboardEvent, MouseEvent, MutableRefObject } from 'react';
 import type { CodeEditorFile } from '../types/types';
 import CodeEditor from './CodeEditor';
 
@@ -11,6 +11,7 @@ type EditorSidebarProps = {
   hasManualWidth: boolean;
   resizeHandleRef: MutableRefObject<HTMLDivElement | null>;
   onResizeStart: (event: MouseEvent<HTMLDivElement>) => void;
+  onResizeKeyDown: (event: KeyboardEvent<HTMLDivElement>) => void;
   onCloseEditor: () => void;
   onToggleEditorExpand: () => void;
   projectPath?: string;
@@ -30,6 +31,7 @@ export default function EditorSidebar({
   hasManualWidth,
   resizeHandleRef,
   onResizeStart,
+  onResizeKeyDown,
   onCloseEditor,
   onToggleEditorExpand,
   projectPath,
@@ -125,10 +127,16 @@ export default function EditorSidebar({
         <div
           ref={resizeHandleRef}
           onMouseDown={onResizeStart}
-          className="flex-shrink-0 w-1 bg-gray-200 dark:bg-gray-700 hover:bg-blue-500 dark:hover:bg-blue-600 cursor-col-resize transition-colors relative group"
+          onKeyDown={onResizeKeyDown}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize file directory"
+          tabIndex={0}
+          className="flex-shrink-0 w-2 bg-transparent hover:bg-cyan-500/10 focus:bg-cyan-500/10 cursor-col-resize transition-colors relative group outline-none"
           title="Drag to resize"
         >
-          <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-1 bg-blue-500 dark:bg-blue-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-gray-500/35 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity" />
+          <div className="absolute left-1/2 top-1/2 h-10 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-400 opacity-0 group-hover:opacity-80 group-focus:opacity-80 transition-opacity" />
         </div>
       )}
 

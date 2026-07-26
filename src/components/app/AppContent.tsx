@@ -15,6 +15,7 @@ import { useWebSocket } from '../../contexts/WebSocketContext';
 import { useDeviceSettings } from '../../hooks/useDeviceSettings';
 import { useSessionProtection } from '../../hooks/useSessionProtection';
 import { useProjectsState } from '../../hooks/useProjectsState';
+import { useUiPreferences } from '../../hooks/useUiPreferences';
 import { useVisualPerformanceMode } from '../../hooks/useVisualPerformanceMode';
 
 export default function AppContent() {
@@ -22,6 +23,7 @@ export default function AppContent() {
   const { sessionId } = useParams<{ sessionId?: string }>();
   const { t } = useTranslation('common');
   const { theme } = useTheme();
+  const { preferences: uiPreferences } = useUiPreferences();
 
   // HUD 面板为 position:fixed 叠层，不再挤压整个内容区
   // 仅消息区域通过 ClaudeStatus overlay 实现局部避让
@@ -151,11 +153,17 @@ export default function AppContent() {
   }, [showTechDecor]);
 
   const showHudPanels = showTechDecor && activeTab !== 'files';
+  const techLayoutStyle = showTechDecor
+    ? {
+      '--tech-sidebar-width': uiPreferences.sidebarVisible ? '24rem' : '3rem',
+      ...(showHudPanels ? { '--tech-hud-reserve': `${hudReservePx}px` } : {}),
+    } as CSSProperties
+    : undefined;
 
   return (
     <div
       className="fixed inset-0 flex bg-background"
-      style={showHudPanels ? { '--tech-hud-reserve': `${hudReservePx}px` } as CSSProperties : undefined}
+      style={techLayoutStyle}
     >
       {/* DNA 双螺旋动态背景 + HUD 装饰叠层（仅桌面高性能科技主题下显示） */}
       {showTechDecor && <DNABackground />}

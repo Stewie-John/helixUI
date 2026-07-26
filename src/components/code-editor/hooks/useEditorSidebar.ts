@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { MouseEvent as ReactMouseEvent } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from 'react';
 import type { Project } from '../../../types/app';
 import type { CodeEditorDiffInfo, CodeEditorFile } from '../types/types';
 
@@ -136,6 +136,20 @@ export const useEditorSidebar = ({
     [isMobile],
   );
 
+  const handleResizeKeyDown = useCallback((event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
+      return;
+    }
+
+    const mainContainer = resizeHandleRef.current?.parentElement?.parentElement;
+    const maxWidth = Math.max(300, (mainContainer?.clientWidth || 0) - 200);
+    const delta = event.key === 'ArrowLeft' ? 32 : -32;
+
+    event.preventDefault();
+    setHasManualWidth(true);
+    setEditorWidth((previous) => Math.min(maxWidth, Math.max(300, previous + delta)));
+  }, []);
+
   useEffect(() => {
     const handleMouseMove = (event: globalThis.MouseEvent) => {
       if (!isResizing) {
@@ -238,5 +252,6 @@ export const useEditorSidebar = ({
     handleCloseEditor,
     handleToggleEditorExpand,
     handleResizeStart,
+    handleResizeKeyDown,
   };
 };

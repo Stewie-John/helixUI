@@ -1868,6 +1868,7 @@ button.daily-output-heat-cell:hover {
 	  top: 0;
 	  bottom: 0;
 	  width: 1px;
+	  transition: left 150ms ease, right 150ms ease;
 	  background: linear-gradient(
 	    180deg,
 	    transparent,
@@ -1879,7 +1880,7 @@ button.daily-output-heat-cell:hover {
 	}
 
 	.tech .tech-layout-line-overlay::before {
-	  left: 24rem;
+	  left: var(--tech-sidebar-width, 24rem);
 	}
 
 	.tech .tech-layout-line-overlay::after {

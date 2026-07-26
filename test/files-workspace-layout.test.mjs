@@ -8,15 +8,20 @@ const readSource = (relativePath) => readFile(
 );
 
 test('Files uses the HUD space and exposes a persistent file-tree toggle', async () => {
-  const [app, editor, header, sidebar] = await Promise.all([
+  const [app, editor, header, sidebar, editorState, projectSidebar, styles] = await Promise.all([
     readSource('src/components/app/AppContent.tsx'),
     readSource('src/components/code-editor/view/CodeEditor.tsx'),
     readSource('src/components/code-editor/view/subcomponents/CodeEditorHeader.tsx'),
     readSource('src/components/code-editor/view/EditorSidebar.tsx'),
+    readSource('src/components/code-editor/hooks/useEditorSidebar.ts'),
+    readSource('src/components/sidebar/view/Sidebar.tsx'),
+    readSource('src/index.css'),
   ]);
 
   assert.match(app, /const showHudPanels = showTechDecor && activeTab !== 'files'/);
   assert.match(app, /\{showHudPanels && \(/);
+  assert.match(app, /style=\{techLayoutStyle\}/);
+  assert.match(app, /'--tech-sidebar-width': uiPreferences\.sidebarVisible \? '24rem' : '3rem'/);
   assert.match(app, /style=\{showHudPanels \? \{ paddingRight:/);
   assert.doesNotMatch(app, /showInputSeparator/);
   assert.match(header, /PanelLeftClose/);
@@ -26,6 +31,12 @@ test('Files uses the HUD space and exposes a persistent file-tree toggle', async
   assert.match(editor, /onToggleExpand=\{onToggleExpand\}/);
   assert.match(editor, /onToggleExpand: null/);
   assert.match(sidebar, /editorExpanded \? '' : 'border-l border-gray-200 dark:border-gray-700'/);
+  assert.match(sidebar, /role="separator"/);
+  assert.match(sidebar, /onKeyDown=\{onResizeKeyDown\}/);
+  assert.match(editorState, /event\.key === 'ArrowLeft' \? 32 : -32/);
+  assert.match(projectSidebar, /const shouldShowSidebar = activeTab !== 'files'/);
+  assert.match(projectSidebar, /setPreference\('sidebarVisible', shouldShowSidebar\)/);
+  assert.match(styles, /left: var\(--tech-sidebar-width, 24rem\)/);
 });
 
 test('chat Markdown opens local text links internally without intercepting web links', async () => {
