@@ -520,6 +520,20 @@ type ImageCacheEntry = {
 };
 const imageCache = new Map<string, ImageCacheEntry>();
 
+// 每个 blobUrl 都占着一份解码后的图片内存，长会话里翻几百张图就再也不释放。
+// Map 按插入顺序遍历，所以从最旧的开始淘汰；仍被组件订阅或还在下载的条目要跳过。
+const IMAGE_CACHE_LIMIT = 60;
+
+function evictStaleImages() {
+  if (imageCache.size <= IMAGE_CACHE_LIMIT) return;
+  for (const [key, entry] of imageCache) {
+    if (imageCache.size <= IMAGE_CACHE_LIMIT) break;
+    if (entry.subscribers.size > 0 || entry.status === 'loading') continue;
+    if (entry.blobUrl) URL.revokeObjectURL(entry.blobUrl);
+    imageCache.delete(key);
+  }
+}
+
 function fetchImageCached(apiSrc: string): ImageCacheEntry {
   const existing = imageCache.get(apiSrc);
   if (existing) return existing;
@@ -551,6 +565,7 @@ function fetchImageCached(apiSrc: string): ImageCacheEntry {
   };
   doFetch();
   imageCache.set(apiSrc, entry);
+  evictStaleImages();
   return entry;
 }
 

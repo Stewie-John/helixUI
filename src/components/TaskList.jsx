@@ -1,12 +1,15 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { Suspense, lazy, useState, useMemo, useEffect, useRef } from 'react';
 import { Search, Filter, ArrowUpDown, ArrowUp, ArrowDown, List, Grid, ChevronDown, Columns, Plus, Settings, Terminal, FileText, HelpCircle, X } from 'lucide-react';
 import { cn } from '../lib/utils';
 import TaskCard from './TaskCard';
 import CreateTaskModal from './CreateTaskModal';
 import { useTaskMaster } from '../contexts/TaskMasterContext';
-import Shell from './shell/view/Shell';
 import { api } from '../utils/api';
 import { useTranslation } from 'react-i18next';
+
+// Shell 会拖进整个 xterm 依赖（gz 后约 95 KB），而它只在这个模态框打开时才渲染，
+// 静态导入等于把终端代码算进首屏。
+const Shell = lazy(() => import('./shell/view/Shell'));
 
 const TaskList = ({ 
   tasks = [], 
@@ -452,25 +455,27 @@ const TaskList = ({
                     }
                   }}
                 >
-                  <Shell 
-                    selectedProject={currentProject}
-                    selectedSession={null}
-                    isActive={true}
-                    initialCommand="npx task-master init"
-                    isPlainShell={true}
-                    onProcessComplete={(exitCode) => {
-                      setIsTaskMasterComplete(true);
-                      if (exitCode === 0) {
-                        // Auto-refresh after successful completion
-                        setTimeout(() => {
-                          refreshProjects();
-                          if (currentProject) {
-                            setCurrentProject(currentProject);
-                          }
-                        }, 1000);
-                      }
-                    }}
-                  />
+                  <Suspense fallback={null}>
+                    <Shell
+                      selectedProject={currentProject}
+                      selectedSession={null}
+                      isActive={true}
+                      initialCommand="npx task-master init"
+                      isPlainShell={true}
+                      onProcessComplete={(exitCode) => {
+                        setIsTaskMasterComplete(true);
+                        if (exitCode === 0) {
+                          // Auto-refresh after successful completion
+                          setTimeout(() => {
+                            refreshProjects();
+                            if (currentProject) {
+                              setCurrentProject(currentProject);
+                            }
+                          }, 1000);
+                        }
+                      }}
+                    />
+                  </Suspense>
                 </div>
               </div>
               

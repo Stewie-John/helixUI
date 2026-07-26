@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import { ArrowRight, List, Clock, Flag, CheckCircle, Circle, AlertCircle, Pause, ChevronDown, ChevronUp, Plus, FileText, Settings, X, Terminal, Eye, Play, Zap, Target } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useTaskMaster } from '../contexts/TaskMasterContext';
 import { api } from '../utils/api';
-import Shell from './shell/view/Shell';
 import TaskDetail from './TaskDetail';
+
+// Shell 会拖进整个 xterm 依赖（gz 后约 95 KB），而它只在这个模态框打开时才渲染，
+// 静态导入等于把终端代码算进首屏。
+const Shell = lazy(() => import('./shell/view/Shell'));
 
 const NextTaskBanner = ({ onShowAllTasks, onStartTask, className = '' }) => {
   const { nextTask, tasks, currentProject, isLoadingTasks, projectTaskMaster, refreshTasks, refreshProjects } = useTaskMaster();
@@ -292,13 +295,15 @@ const NextTaskBanner = ({ onShowAllTasks, onStartTask, className = '' }) => {
             {/* Terminal Container */}
             <div className="flex-1 p-4">
               <div className="h-full bg-black rounded-lg overflow-hidden">
-                <Shell 
-                  selectedProject={currentProject}
-                  selectedSession={null}
-                  isActive={true}
-                  initialCommand="npx task-master init"
-                  isPlainShell={true}
-                />
+                <Suspense fallback={null}>
+                  <Shell
+                    selectedProject={currentProject}
+                    selectedSession={null}
+                    isActive={true}
+                    initialCommand="npx task-master init"
+                    isPlainShell={true}
+                  />
+                </Suspense>
               </div>
             </div>
             
