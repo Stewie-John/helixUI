@@ -887,6 +887,7 @@ app.get('/api/user/daily-input', authenticateToken, (req, res) => {
         username: req.user.username,
         ...totals,
         ...outputTotals,
+        ...modelOutputDb.getCostForDay(req.user.id, day),
     });
 });
 
@@ -921,6 +922,9 @@ app.get('/api/user/daily-input/all', authenticateToken, (req, res) => {
             todayEstimatedCredits: outputByUser.get(entry.userId)?.todayEstimatedCredits || 0,
             totalEstimatedCredits: outputByUser.get(entry.userId)?.totalEstimatedCredits || 0,
             hasUnknownPricing: outputByUser.get(entry.userId)?.hasUnknownPricing || false,
+            todayCostUsd: outputByUser.get(entry.userId)?.todayCostUsd || 0,
+            totalCostUsd: outputByUser.get(entry.userId)?.totalCostUsd || 0,
+            hasUnknownCostPricing: outputByUser.get(entry.userId)?.hasUnknownCostPricing || false,
         })),
     });
 });
@@ -940,16 +944,19 @@ app.get('/api/user/daily-input/history', authenticateToken, (req, res) => {
     const startDay = shiftCalendarDay(endDay, -364);
     const overview = dailyInputDb.getUsageOverview(targetUserId, startDay, endDay);
     const outputOverview = modelOutputDb.getUsageOverview(targetUserId, startDay, endDay);
+    const emptyUsage = { inputTokens: 0, cachedInputTokens: 0, outputTokens: 0, estimatedCredits: 0, hasUnknownPricing: false, costUsd: 0, hasUnknownCostPricing: false };
     const daysByDate = new Map(
-        overview.days.map((entry) => [entry.day, { ...entry, inputTokens: 0, cachedInputTokens: 0, outputTokens: 0, estimatedCredits: 0, hasUnknownPricing: false }]),
+        overview.days.map((entry) => [entry.day, { ...entry, ...emptyUsage }]),
     );
     outputOverview.days.forEach((entry) => {
-        const existing = daysByDate.get(entry.day) || { day: entry.day, charCount: 0, inputTokens: 0, cachedInputTokens: 0, outputTokens: 0, estimatedCredits: 0, hasUnknownPricing: false };
+        const existing = daysByDate.get(entry.day) || { day: entry.day, charCount: 0, ...emptyUsage };
         existing.inputTokens = entry.inputTokens;
         existing.cachedInputTokens = entry.cachedInputTokens;
         existing.outputTokens = entry.outputTokens;
         existing.estimatedCredits = entry.estimatedCredits;
         existing.hasUnknownPricing = entry.hasUnknownPricing;
+        existing.costUsd = entry.costUsd;
+        existing.hasUnknownCostPricing = entry.hasUnknownCostPricing;
         daysByDate.set(entry.day, existing);
     });
     return res.json({
@@ -959,6 +966,7 @@ app.get('/api/user/daily-input/history', authenticateToken, (req, res) => {
         startDay,
         endDay,
         days: Array.from(daysByDate.values()).sort((a, b) => a.day.localeCompare(b.day)),
+        models: outputOverview.models || [],
         summary: {
             ...overview.summary,
             ...outputOverview.summary,
@@ -2687,14 +2695,18 @@ setInterval(runCodexUsageReconciliation, 60 * 60 * 1000).unref();
 
 function createModelOutputTracker({ userId, eventId, provider, initialSessionId, model }) {
     let exactInputTokens = 0;
+    let exactCachedInputTokens = 0;
+    let exactCacheWriteTokens = 0;
     let exactOutputTokens = 0;
     let reportedInputTokens = 0;
     let reportedCachedInputTokens = 0;
+    let reportedCacheWriteTokens = 0;
     let reportedOutputTokens = 0;
     let sessionId = initialSessionId || null;
     let finalized = false;
     let lastPersistedInputTokens = 0;
     let lastPersistedCachedInputTokens = 0;
+    let lastPersistedCacheWriteTokens = 0;
     let lastPersistedOutputTokens = 0;
     let lastPersistedAt = 0;
     let pendingPersistTimer = null;
@@ -2716,9 +2728,19 @@ function createModelOutputTracker({ userId, eventId, provider, initialSessionId,
 
     const persistSnapshot = () => {
         const inputTokens = Math.max(exactInputTokens, reportedInputTokens);
-        const cachedInputTokens = Math.min(inputTokens, reportedCachedInputTokens);
+        // 缓存命中（0.1×）与缓存写入（1.25×）计价档位不同，必须与普通输入分开存
+        const cachedInputTokens = Math.min(inputTokens, Math.max(exactCachedInputTokens, reportedCachedInputTokens));
+        const cacheWriteTokens = Math.min(
+            inputTokens - cachedInputTokens,
+            Math.max(exactCacheWriteTokens, reportedCacheWriteTokens),
+        );
         const outputTokens = Math.max(exactOutputTokens, reportedOutputTokens);
-        if (inputTokens <= lastPersistedInputTokens && cachedInputTokens <= lastPersistedCachedInputTokens && outputTokens <= lastPersistedOutputTokens) return false;
+        if (
+            inputTokens <= lastPersistedInputTokens
+            && cachedInputTokens <= lastPersistedCachedInputTokens
+            && cacheWriteTokens <= lastPersistedCacheWriteTokens
+            && outputTokens <= lastPersistedOutputTokens
+        ) return false;
         const changed = modelOutputDb.record(
             userId,
             eventId,
@@ -2729,9 +2751,11 @@ function createModelOutputTracker({ userId, eventId, provider, initialSessionId,
             inputTokens,
             cachedInputTokens,
             model,
+            cacheWriteTokens,
         );
         lastPersistedInputTokens = inputTokens;
         lastPersistedCachedInputTokens = cachedInputTokens;
+        lastPersistedCacheWriteTokens = cacheWriteTokens;
         lastPersistedOutputTokens = outputTokens;
         lastPersistedAt = Date.now();
         if (changed) notifyUsageUpdated();
@@ -2768,9 +2792,11 @@ function createModelOutputTracker({ userId, eventId, provider, initialSessionId,
                 const usageId = String(data.message?.id || data.id || data.uuid || `legacy:${JSON.stringify(usage)}`);
                 if (!seenClaudeUsageIds.has(usageId)) {
                     seenClaudeUsageIds.add(usageId);
-                    exactInputTokens += readTokens(usage.input_tokens)
-                        + readTokens(usage.cache_read_input_tokens)
-                        + readTokens(usage.cache_creation_input_tokens);
+                    const cacheReadTokens = readTokens(usage.cache_read_input_tokens);
+                    const cacheWriteTokens = readTokens(usage.cache_creation_input_tokens);
+                    exactInputTokens += readTokens(usage.input_tokens) + cacheReadTokens + cacheWriteTokens;
+                    exactCachedInputTokens += cacheReadTokens;
+                    exactCacheWriteTokens += cacheWriteTokens;
                     exactOutputTokens += readTokens(usage.output_tokens);
                 }
             }
@@ -2814,6 +2840,10 @@ function createModelOutputTracker({ userId, eventId, provider, initialSessionId,
             reportedCachedInputTokens = Math.max(
                 reportedCachedInputTokens,
                 readTokens(data.billingCachedInputTokens, data.cachedInputTokens, data.cached_input_tokens),
+            );
+            reportedCacheWriteTokens = Math.max(
+                reportedCacheWriteTokens,
+                readTokens(data.billingCacheWriteTokens, data.cacheWriteTokens, data.cache_creation_input_tokens),
             );
             reportedOutputTokens = Math.max(
                 reportedOutputTokens,

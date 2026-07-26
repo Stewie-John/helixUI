@@ -38,7 +38,16 @@
     "dailyOutputPeak": "Highest daily output",
     "less": "Less",
     "more": "More",
-    "weekdays": { "mon": "Mo", "wed": "We", "fri": "Fr" }
+    "weekdays": { "mon": "Mo", "wed": "We", "fri": "Fr" },
+    "costActivity": "MODEL SPEND ACTIVITY",
+    "dayCost": "DAY SPEND",
+    "totalCost": "Total spend",
+    "dailyCostPeak": "Highest daily spend",
+    "spend": "spend",
+    "modelCostBreakdown": "SPEND BY MODEL",
+    "costRateCard": "Estimated from official published rate cards",
+    "partialCostPricing": "Some usage has no published rate for its model",
+    "model": "MODEL"
   },
   "goal": {
     "status": { "active": "GOAL ACTIVE", "paused": "GOAL PAUSED", "blocked": "GOAL BLOCKED", "usageLimited": "USAGE LIMITED", "budgetLimited": "BUDGET LIMITED", "complete": "GOAL COMPLETE" },

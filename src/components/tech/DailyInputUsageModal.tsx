@@ -25,6 +25,21 @@ type UserTotal = {
   todayEstimatedCredits: number;
   totalEstimatedCredits: number;
   hasUnknownPricing: boolean;
+  todayCostUsd: number;
+  totalCostUsd: number;
+  hasUnknownCostPricing: boolean;
+};
+
+type ModelCost = {
+  provider: string;
+  model: string;
+  inputTokens: number;
+  cachedInputTokens: number;
+  cacheWriteTokens: number;
+  outputTokens: number;
+  costUsd: number;
+  windowCostUsd: number;
+  hasUnknownCostPricing: boolean;
 };
 
 type UsageHistory = {
@@ -33,7 +48,8 @@ type UsageHistory = {
   timeZone: string;
   startDay: string;
   endDay: string;
-  days: Array<{ day: string; charCount: number; inputTokens: number; cachedInputTokens: number; outputTokens: number; estimatedCredits: number; hasUnknownPricing: boolean }>;
+  days: Array<{ day: string; charCount: number; inputTokens: number; cachedInputTokens: number; outputTokens: number; estimatedCredits: number; hasUnknownPricing: boolean; costUsd: number; hasUnknownCostPricing: boolean }>;
+  models?: ModelCost[];
   summary: {
     lifetimeCount: number;
     peakCount: number;
@@ -46,17 +62,64 @@ type UsageHistory = {
     lifetimeOutputTokens: number;
     peakOutputTokens: number;
     outputDays: number;
+    lifetimeCostUsd: number;
+    peakCostUsd: number;
+    costDays: number;
   };
 };
 
-type CalendarCell = { day: string; charCount: number; inputTokens: number; outputTokens: number; inRange: boolean };
+type HeatMetric = 'characters' | 'modelInput' | 'output' | 'cost';
+
+type CalendarCell = { day: string; charCount: number; inputTokens: number; outputTokens: number; costUsd: number; inRange: boolean };
 
 const DAY_MS = 86_400_000;
 const HEAT_RANGES = {
   characters: ['#20272b', '#ffe29a', '#fff9df'],
   modelInput: ['#20272b', '#76e6ff', '#d9faff'],
   output: ['#20272b', '#ff8ed0', '#ffe0f2'],
+  cost: ['#20272b', '#6dffba', '#dffff1'],
 } as const;
+
+const METRIC_ACCENTS: Record<HeatMetric, string> = {
+  characters: '#ffe29a',
+  modelInput: '#76e6ff',
+  output: '#ff8ed0',
+  cost: '#6dffba',
+};
+
+const METRIC_TITLE_KEYS: Record<HeatMetric, string> = {
+  characters: 'hud.inputActivity',
+  modelInput: 'hud.modelInputActivity',
+  output: 'hud.outputActivity',
+  cost: 'hud.costActivity',
+};
+
+const METRIC_UNIT_KEYS: Record<HeatMetric, string> = {
+  characters: 'hud.characters',
+  modelInput: 'hud.inputTokens',
+  output: 'hud.outputTokens',
+  cost: 'hud.spend',
+};
+
+const METRIC_CELL_CLASS: Record<HeatMetric, string> = {
+  characters: 'daily-input-heat-cell',
+  modelInput: 'daily-model-input-heat-cell',
+  output: 'daily-output-heat-cell',
+  cost: 'daily-cost-heat-cell',
+};
+
+const cellValue = (cell: CalendarCell, metric: HeatMetric) => (
+  metric === 'output' ? cell.outputTokens
+    : metric === 'modelInput' ? cell.inputTokens
+      : metric === 'cost' ? cell.costUsd
+        : cell.charCount
+);
+
+// 花销以美元展示；不足 1 美元时保留更多小数位，避免整天显示为 $0.00
+const formatUsd = (value: number) => `$${new Intl.NumberFormat(undefined, {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: value > 0 && value < 1 ? 4 : 2,
+}).format(value)}`;
 
 const parseDay = (day: string) => new Date(`${day}T00:00:00Z`);
 const formatDay = (date: Date) => date.toISOString().slice(0, 10);
@@ -79,6 +142,7 @@ function buildCalendar(history: UsageHistory | null): CalendarCell[][] {
         charCount: counts.get(day)?.charCount || 0,
         inputTokens: counts.get(day)?.inputTokens || 0,
         outputTokens: counts.get(day)?.outputTokens || 0,
+        costUsd: counts.get(day)?.costUsd || 0,
         inRange: day >= history.startDay && day <= history.endDay,
       });
     }
@@ -133,26 +197,24 @@ function ActivityGrid({
   weeks: CalendarCell[][];
   monthLabels: string[];
   peak: number;
-  metric: 'characters' | 'modelInput' | 'output';
+  metric: HeatMetric;
   selectedDay: Pick<CalendarCell, 'day'> | null;
   canSelect: boolean;
   onSelect: (cell: CalendarCell) => void;
 }) {
   const { t } = useTranslation();
-  const output = metric === 'output';
-  const modelInput = metric === 'modelInput';
   const range = HEAT_RANGES[metric];
-  const accent = output ? '#ff8ed0' : modelInput ? '#76e6ff' : '#ffe29a';
+  const accent = METRIC_ACCENTS[metric];
   const positiveValues = useMemo(() => weeks
     .flatMap((week) => week)
     .filter((cell) => cell.inRange)
-    .map((cell) => output ? cell.outputTokens : modelInput ? cell.inputTokens : cell.charCount)
+    .map((cell) => cellValue(cell, metric))
     .filter((value) => value > 0)
-    .sort((left, right) => left - right), [modelInput, output, weeks]);
+    .sort((left, right) => left - right), [metric, weeks]);
   return (
     <div className="daily-activity">
       <div className="daily-activity-title" style={{ color: accent }}>
-        {t(output ? 'hud.outputActivity' : modelInput ? 'hud.modelInputActivity' : 'hud.inputActivity')}
+        {t(METRIC_TITLE_KEYS[metric])}
       </div>
       <div className="daily-activity-scroll">
         <div className="daily-activity-chart">
@@ -168,24 +230,27 @@ function ActivityGrid({
             </div>
             <div className="daily-activity-cells">
               {weeks.flatMap((week) => week).map((cell) => {
-                const value = output ? cell.outputTokens : modelInput ? cell.inputTokens : cell.charCount;
+                const value = cellValue(cell, metric);
                 const heatAmount = continuousHeatAmount(value, peak, positiveValues);
                 const heatColor = cell.inRange
                   ? interpolateHeatColor(range, heatAmount)
                   : 'transparent';
                 const selected = selectedDay?.day === cell.day;
-                const unit = t(output ? 'hud.outputTokens' : modelInput ? 'hud.inputTokens' : 'hud.characters');
+                const unit = t(METRIC_UNIT_KEYS[metric]);
+                const label = metric === 'cost'
+                  ? `${cell.day}: ${formatUsd(value)}`
+                  : `${cell.day}: ${value.toLocaleString()} ${unit}`;
                 return (
                   <button
                     key={`${metric}-${cell.day}`}
                     type="button"
-                    className={output ? 'daily-output-heat-cell' : modelInput ? 'daily-model-input-heat-cell' : 'daily-input-heat-cell'}
+                    className={METRIC_CELL_CLASS[metric]}
                     data-heat-value={cell.inRange ? heatAmount.toFixed(4) : 'outside'}
                     disabled={!canSelect || !cell.inRange}
                     onClick={() => onSelect(cell)}
-                    aria-label={`${cell.day}: ${value.toLocaleString()} ${unit}`}
+                    aria-label={label}
                     aria-pressed={selected}
-                    title={`${cell.day}: ${value.toLocaleString()} ${unit}`}
+                    title={label}
                     style={{
                       '--daily-heat-color': heatColor,
                       width: 'var(--daily-cell)', height: 'var(--daily-cell)', padding: 0, borderRadius: 1, border: 0,
@@ -231,7 +296,7 @@ export default function DailyInputUsageModal({
   const [loading, setLoading] = useState(false);
   const [usersError, setUsersError] = useState<string | null>(null);
   const [historyError, setHistoryError] = useState<string | null>(null);
-  const [selectedDay, setSelectedDay] = useState<Pick<CalendarCell, 'day' | 'charCount' | 'inputTokens' | 'outputTokens'> | null>(null);
+  const [selectedDay, setSelectedDay] = useState<Pick<CalendarCell, 'day' | 'charCount' | 'inputTokens' | 'outputTokens' | 'costUsd'> | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -274,6 +339,8 @@ export default function DailyInputUsageModal({
               todayOutputTokens: dayUsage?.outputTokens || 0,
               todayEstimatedCredits: dayUsage?.estimatedCredits || 0,
               hasUnknownPricing: dayUsage?.hasUnknownPricing || false,
+              todayCostUsd: dayUsage?.costUsd || 0,
+              hasUnknownCostPricing: dayUsage?.hasUnknownCostPricing || false,
             };
           }));
         }
@@ -313,7 +380,7 @@ export default function DailyInputUsageModal({
             if (!previous) return null;
             const entry = payload.days.find((day) => day.day === previous.day);
             return entry
-              ? { day: entry.day, charCount: entry.charCount, inputTokens: entry.inputTokens, outputTokens: entry.outputTokens }
+              ? { day: entry.day, charCount: entry.charCount, inputTokens: entry.inputTokens, outputTokens: entry.outputTokens, costUsd: entry.costUsd || 0 }
               : previous;
           });
           setHistoryError(null);
@@ -356,8 +423,18 @@ export default function DailyInputUsageModal({
     () => history?.days.reduce((peak, entry) => Math.max(peak, entry.inputTokens), 0) || 0,
     [history],
   );
+  const costCalendarPeak = useMemo(
+    () => history?.days.reduce((peak, entry) => Math.max(peak, entry.costUsd || 0), 0) || 0,
+    [history],
+  );
+  const modelCosts = useMemo(
+    () => (history?.models || []).filter((entry) => entry.costUsd > 0 || entry.inputTokens > 0 || entry.outputTokens > 0),
+    [history],
+  );
   const usersByDailyCost = useMemo(
     () => [...users].sort((left, right) => {
+      const usdDifference = (right.todayCostUsd || 0) - (left.todayCostUsd || 0);
+      if (usdDifference !== 0) return usdDifference;
       const costDifference = (right.todayEstimatedCredits || 0) - (left.todayEstimatedCredits || 0);
       if (costDifference !== 0) return costDifference;
       const tokenDifference = (right.todayInputTokens + right.todayOutputTokens) - (left.todayInputTokens + left.todayOutputTokens);
@@ -381,7 +458,8 @@ export default function DailyInputUsageModal({
   if (!open) return null;
   const compact = (value: number) => new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(value);
   const credits = (value: number) => new Intl.NumberFormat(undefined, { maximumFractionDigits: value < 10 ? 3 : 2 }).format(value);
-  const accountGridColumns = 'minmax(92px, 1.05fr) minmax(72px, .78fr) minmax(108px, 1.08fr) minmax(88px, .88fr) minmax(112px, 1.06fr) minmax(82px, .82fr) minmax(112px, 1.08fr) minmax(94px, .96fr)';
+  const modelCostColumns = 'minmax(140px, 1.6fr) minmax(84px, .9fr) minmax(84px, .9fr) minmax(96px, 1fr)';
+  const accountGridColumns = 'minmax(92px, 1.05fr) minmax(72px, .78fr) minmax(108px, 1.08fr) minmax(88px, .88fr) minmax(112px, 1.06fr) minmax(96px, .96fr) minmax(82px, .82fr) minmax(112px, 1.08fr) minmax(94px, .96fr)';
   const summary = history?.summary;
   const rankingDayLabel = selectedDay
     ? new Intl.DateTimeFormat(undefined, { dateStyle: 'long', timeZone: 'UTC' }).format(parseDay(selectedDay.day))
@@ -444,6 +522,7 @@ export default function DailyInputUsageModal({
                   <span>{t(selectedDay ? 'hud.inputTokens' : 'hud.todayModelInput')}</span>
                   <span>{t(selectedDay ? 'hud.outputTokens' : 'hud.todayOutput')}</span>
                   <span>{t('hud.codexCredits')}</span>
+                  <span>{t('hud.dayCost')}</span>
                   <span>{t('hud.totalCharactersLabel')}</span>
                   <span>{t('hud.totalModelInput')}</span>
                   <span>{t('hud.totalOutput')}</span>
@@ -474,6 +553,9 @@ export default function DailyInputUsageModal({
                       <span style={{ color: '#d6a7ff', fontVariantNumeric: 'tabular-nums' }}>↓{(user.todayOutputTokens || 0).toLocaleString()}</span>
                       <span title={user.hasUnknownPricing ? t('hud.partialPricing') : t('hud.officialRateCard')} style={{ color: '#6dffba', fontVariantNumeric: 'tabular-nums', fontWeight: 750 }}>
                         {user.hasUnknownPricing ? '≥' : ''}{credits(user.todayEstimatedCredits || 0)} cr
+                      </span>
+                      <span title={user.hasUnknownCostPricing ? t('hud.partialCostPricing') : t('hud.costRateCard')} style={{ color: '#9dffd6', fontVariantNumeric: 'tabular-nums', fontWeight: 750 }}>
+                        {user.hasUnknownCostPricing ? '≥' : ''}{formatUsd(user.todayCostUsd || 0)}
                       </span>
                       <span style={{ color: '#ffe29a', fontVariantNumeric: 'tabular-nums' }}>{user.totalCount.toLocaleString()}</span>
                       <span style={{ color: '#45c8e7', fontVariantNumeric: 'tabular-nums' }}>↑{(user.totalInputTokens || 0).toLocaleString()}</span>
@@ -508,6 +590,8 @@ export default function DailyInputUsageModal({
                 <span>· {t('hud.dailyModelInputPeak')} <b style={{ color: '#45c8e7' }}>↑{compact(summary?.peakInputTokens || 0)}</b></span>
                 <span>· {t('hud.totalModelOutput')} <b style={{ color: '#d6a7ff' }}>↓{compact(summary?.lifetimeOutputTokens || 0)}</b></span>
                 <span>· {t('hud.dailyOutputPeak')} <b style={{ color: '#c47eff' }}>↓{compact(summary?.peakOutputTokens || 0)}</b></span>
+                <span>· {t('hud.totalCost')} <b style={{ color: '#6dffba' }}>{formatUsd(summary?.lifetimeCostUsd || 0)}</b></span>
+                <span>· {t('hud.dailyCostPeak')} <b style={{ color: '#9dffd6' }}>{formatUsd(summary?.peakCostUsd || 0)}</b></span>
               </div>
 
               <ActivityGrid
@@ -517,7 +601,7 @@ export default function DailyInputUsageModal({
                 metric="characters"
                 selectedDay={selectedDay}
                 canSelect={account.isAdmin}
-                onSelect={(cell) => setSelectedDay({ day: cell.day, charCount: cell.charCount, inputTokens: cell.inputTokens, outputTokens: cell.outputTokens })}
+                onSelect={(cell) => setSelectedDay({ day: cell.day, charCount: cell.charCount, inputTokens: cell.inputTokens, outputTokens: cell.outputTokens, costUsd: cell.costUsd })}
               />
 
               <ActivityGrid
@@ -527,7 +611,7 @@ export default function DailyInputUsageModal({
                 metric="modelInput"
                 selectedDay={selectedDay}
                 canSelect={account.isAdmin}
-                onSelect={(cell) => setSelectedDay({ day: cell.day, charCount: cell.charCount, inputTokens: cell.inputTokens, outputTokens: cell.outputTokens })}
+                onSelect={(cell) => setSelectedDay({ day: cell.day, charCount: cell.charCount, inputTokens: cell.inputTokens, outputTokens: cell.outputTokens, costUsd: cell.costUsd })}
               />
 
               <ActivityGrid
@@ -537,8 +621,49 @@ export default function DailyInputUsageModal({
                 metric="output"
                 selectedDay={selectedDay}
                 canSelect={account.isAdmin}
-                onSelect={(cell) => setSelectedDay({ day: cell.day, charCount: cell.charCount, inputTokens: cell.inputTokens, outputTokens: cell.outputTokens })}
+                onSelect={(cell) => setSelectedDay({ day: cell.day, charCount: cell.charCount, inputTokens: cell.inputTokens, outputTokens: cell.outputTokens, costUsd: cell.costUsd })}
               />
+
+              <ActivityGrid
+                weeks={weeks}
+                monthLabels={monthLabels}
+                peak={costCalendarPeak}
+                metric="cost"
+                selectedDay={selectedDay}
+                canSelect={account.isAdmin}
+                onSelect={(cell) => setSelectedDay({ day: cell.day, charCount: cell.charCount, inputTokens: cell.inputTokens, outputTokens: cell.outputTokens, costUsd: cell.costUsd })}
+              />
+
+              {modelCosts.length > 0 && (
+                <div className="daily-model-cost">
+                  <div className="daily-activity-title" style={{ color: '#6dffba' }}>{t('hud.modelCostBreakdown')}</div>
+                  <div className="daily-model-cost-header" style={{ gridTemplateColumns: modelCostColumns }}>
+                    <span>{t('hud.model')}</span>
+                    <span>{t('hud.inputTokens')}</span>
+                    <span>{t('hud.outputTokens')}</span>
+                    <span>{t('hud.totalCost')}</span>
+                  </div>
+                  {modelCosts.map((entry) => (
+                    <div
+                      key={`${entry.provider}-${entry.model}`}
+                      className="daily-model-cost-row"
+                      style={{ gridTemplateColumns: modelCostColumns }}
+                    >
+                      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', color: '#dce7e4' }} title={`${entry.provider} / ${entry.model}`}>
+                        {entry.model}
+                      </span>
+                      <span style={{ color: '#76e6ff', fontVariantNumeric: 'tabular-nums' }}>↑{compact(entry.inputTokens)}</span>
+                      <span style={{ color: '#c47eff', fontVariantNumeric: 'tabular-nums' }}>↓{compact(entry.outputTokens)}</span>
+                      <span
+                        title={entry.hasUnknownCostPricing ? t('hud.partialCostPricing') : t('hud.costRateCard')}
+                        style={{ color: '#6dffba', fontVariantNumeric: 'tabular-nums', fontWeight: 750 }}
+                      >
+                        {entry.hasUnknownCostPricing ? '≥' : ''}{formatUsd(entry.costUsd)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div style={{ minHeight: 26, display: 'flex', alignItems: 'center', marginTop: 3 }}>
                 {account.isAdmin && selectedDay && (
@@ -555,6 +680,9 @@ export default function DailyInputUsageModal({
                     <span style={{ color: 'rgba(170,226,220,0.55)', margin: '0 8px' }}>·</span>
                     <strong style={{ color: '#c47eff', fontSize: 13 }}>↓{selectedDay.outputTokens.toLocaleString()}</strong>
                     <span style={{ color: '#a9b1b2', marginLeft: 5 }}>{t('hud.outputTokens')}</span>
+                    <span style={{ color: 'rgba(170,226,220,0.55)', margin: '0 8px' }}>·</span>
+                    <strong style={{ color: '#6dffba', fontSize: 13 }}>{formatUsd(selectedDay.costUsd || 0)}</strong>
+                    <span style={{ color: '#a9b1b2', marginLeft: 5 }}>{t('hud.spend')}</span>
                   </div>
                 )}
               </div>

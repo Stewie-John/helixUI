@@ -38,7 +38,16 @@
     "dailyOutputPeak": "1日の最多出力",
     "less": "少",
     "more": "多",
-    "weekdays": { "mon": "月", "wed": "水", "fri": "金" }
+    "weekdays": { "mon": "月", "wed": "水", "fri": "金" },
+    "costActivity": "モデル費用アクティビティ",
+    "dayCost": "当日の費用",
+    "totalCost": "累計費用",
+    "dailyCostPeak": "1日あたり費用のピーク",
+    "spend": "費用",
+    "modelCostBreakdown": "モデル別費用",
+    "costRateCard": "公式料金表に基づく概算",
+    "partialCostPricing": "一部の利用はモデルの公開料金がありません",
+    "model": "モデル"
   },
   "goal": {
     "status": { "active": "目標を実行中", "paused": "目標を一時停止", "blocked": "目標が停止中", "usageLimited": "使用量制限", "budgetLimited": "予算上限", "complete": "目標完了" },

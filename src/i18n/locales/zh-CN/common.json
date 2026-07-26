@@ -38,7 +38,16 @@
     "dailyOutputPeak": "单日输出最高",
     "less": "少",
     "more": "多",
-    "weekdays": { "mon": "一", "wed": "三", "fri": "五" }
+    "weekdays": { "mon": "一", "wed": "三", "fri": "五" },
+    "costActivity": "模型花销活跃度",
+    "dayCost": "当日花销",
+    "totalCost": "累计花销",
+    "dailyCostPeak": "单日花销峰值",
+    "spend": "花销",
+    "modelCostBreakdown": "各模型花销明细",
+    "costRateCard": "按官方公开价目表估算",
+    "partialCostPricing": "部分用量所属模型没有公开价目",
+    "model": "模型"
   },
   "goal": {
     "status": { "active": "目标进行中", "paused": "目标已暂停", "blocked": "目标受阻", "usageLimited": "额度受限", "budgetLimited": "预算已用尽", "complete": "目标已完成" },

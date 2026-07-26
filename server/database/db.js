@@ -6,6 +6,7 @@ import os from 'os';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { estimateCodexCredits } from '../codex-usage-pricing.js';
+import { estimateModelCostUsd } from '../model-pricing.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -249,6 +250,7 @@ const runMigrations = () => {
       output_day TEXT NOT NULL,
       input_token_count INTEGER NOT NULL DEFAULT 0 CHECK(input_token_count >= 0),
       cached_input_token_count INTEGER NOT NULL DEFAULT 0 CHECK(cached_input_token_count >= 0),
+      cache_write_token_count INTEGER NOT NULL DEFAULT 0 CHECK(cache_write_token_count >= 0),
       token_count INTEGER NOT NULL CHECK(token_count >= 0),
       provider TEXT,
       model TEXT,
@@ -269,6 +271,12 @@ const runMigrations = () => {
     if (!modelUsageColumns.includes('model')) {
       console.log('Running migration: Adding model identity column');
       db.exec('ALTER TABLE model_output_events ADD COLUMN model TEXT');
+    }
+    // Cache writes bill at 1.25x base input on Anthropic, so they cannot stay
+    // folded into the plain input bucket once usage is priced.
+    if (!modelUsageColumns.includes('cache_write_token_count')) {
+      console.log('Running migration: Adding cache write token column');
+      db.exec('ALTER TABLE model_output_events ADD COLUMN cache_write_token_count INTEGER NOT NULL DEFAULT 0 CHECK(cache_write_token_count >= 0)');
     }
     db.exec('CREATE INDEX IF NOT EXISTS idx_model_output_user_day ON model_output_events(user_id, output_day)');
 
@@ -1045,19 +1053,24 @@ const dailyInputDb = {
 };
 
 const modelOutputDb = {
-  record: (userId, eventId, outputDay, tokenCount, provider = null, sessionId = null, inputTokenCount = 0, cachedInputTokenCount = 0, model = null) => {
+  record: (userId, eventId, outputDay, tokenCount, provider = null, sessionId = null, inputTokenCount = 0, cachedInputTokenCount = 0, model = null, cacheWriteTokenCount = 0) => {
     const normalizedOutputCount = Math.max(0, Math.min(1_000_000_000_000, Math.trunc(Number(tokenCount) || 0)));
     const normalizedInputCount = Math.max(0, Math.min(1_000_000_000_000, Math.trunc(Number(inputTokenCount) || 0)));
     const normalizedCachedInputCount = Math.min(normalizedInputCount, Math.max(0, Math.min(1_000_000_000_000, Math.trunc(Number(cachedInputTokenCount) || 0))));
+    const normalizedCacheWriteCount = Math.min(
+      normalizedInputCount - normalizedCachedInputCount,
+      Math.max(0, Math.min(1_000_000_000_000, Math.trunc(Number(cacheWriteTokenCount) || 0))),
+    );
     if (!userId || !eventId || !outputDay || (normalizedInputCount === 0 && normalizedOutputCount === 0)) return false;
     try {
       const result = db.prepare(`
         INSERT INTO model_output_events
-          (user_id, event_id, output_day, input_token_count, cached_input_token_count, token_count, provider, session_id, model)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (user_id, event_id, output_day, input_token_count, cached_input_token_count, cache_write_token_count, token_count, provider, session_id, model)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(user_id, event_id) DO UPDATE SET
           input_token_count = MAX(model_output_events.input_token_count, excluded.input_token_count),
           cached_input_token_count = MAX(model_output_events.cached_input_token_count, excluded.cached_input_token_count),
+          cache_write_token_count = MAX(model_output_events.cache_write_token_count, excluded.cache_write_token_count),
           token_count = MAX(model_output_events.token_count, excluded.token_count),
           provider = COALESCE(excluded.provider, model_output_events.provider),
           session_id = COALESCE(excluded.session_id, model_output_events.session_id)
@@ -1065,12 +1078,14 @@ const modelOutputDb = {
         WHERE excluded.input_token_count > model_output_events.input_token_count
            OR excluded.token_count > model_output_events.token_count
            OR excluded.cached_input_token_count > model_output_events.cached_input_token_count
+           OR excluded.cache_write_token_count > model_output_events.cache_write_token_count
       `).run(
         userId,
         String(eventId),
         String(outputDay),
         normalizedInputCount,
         normalizedCachedInputCount,
+        normalizedCacheWriteCount,
         normalizedOutputCount,
         provider ? String(provider) : null,
         sessionId ? String(sessionId) : null,
@@ -1104,6 +1119,41 @@ const modelOutputDb = {
     }
   },
 
+  // 当日花销（美元）。按 provider+model 分组后逐档计价再求和。
+  getCostForDay: (userId, outputDay) => {
+    try {
+      const rows = db.prepare(`
+        SELECT
+          provider,
+          model,
+          SUM(input_token_count) AS input_tokens,
+          SUM(cached_input_token_count) AS cached_input_tokens,
+          SUM(cache_write_token_count) AS cache_write_tokens,
+          SUM(token_count) AS output_tokens
+        FROM model_output_events
+        WHERE user_id = ? AND output_day = ?
+        GROUP BY provider, model
+      `).all(userId, outputDay);
+      let costUsd = 0;
+      let hasUnknownCostPricing = false;
+      for (const row of rows) {
+        const cost = estimateModelCostUsd({
+          provider: row.provider, model: row.model, day: outputDay,
+          inputTokens: Number(row.input_tokens || 0),
+          cachedInputTokens: Number(row.cached_input_tokens || 0),
+          cacheWriteTokens: Number(row.cache_write_tokens || 0),
+          outputTokens: Number(row.output_tokens || 0),
+        });
+        if (cost === null) hasUnknownCostPricing = true;
+        costUsd += cost || 0;
+      }
+      return { costUsd, hasUnknownCostPricing };
+    } catch (err) {
+      console.warn('modelOutputDb.getCostForDay failed:', err.message);
+      return { costUsd: 0, hasUnknownCostPricing: false };
+    }
+  },
+
   getAllUserTotals: (outputDay) => {
     try {
       const rows = db.prepare(`
@@ -1113,15 +1163,17 @@ const modelOutputDb = {
           model_output_events.model AS model,
           COALESCE(SUM(CASE WHEN model_output_events.output_day = ? THEN model_output_events.input_token_count ELSE 0 END), 0) AS today_input_tokens,
           COALESCE(SUM(CASE WHEN model_output_events.output_day = ? THEN model_output_events.cached_input_token_count ELSE 0 END), 0) AS today_cached_input_tokens,
+          COALESCE(SUM(CASE WHEN model_output_events.output_day = ? THEN model_output_events.cache_write_token_count ELSE 0 END), 0) AS today_cache_write_tokens,
           COALESCE(SUM(model_output_events.input_token_count), 0) AS total_input_tokens,
           COALESCE(SUM(model_output_events.cached_input_token_count), 0) AS total_cached_input_tokens,
+          COALESCE(SUM(model_output_events.cache_write_token_count), 0) AS total_cache_write_tokens,
           COALESCE(SUM(CASE WHEN model_output_events.output_day = ? THEN model_output_events.token_count ELSE 0 END), 0) AS today_output_tokens,
           COALESCE(SUM(model_output_events.token_count), 0) AS total_output_tokens
         FROM users
         LEFT JOIN model_output_events ON model_output_events.user_id = users.id
         WHERE users.is_active = 1
         GROUP BY users.id, model_output_events.provider, model_output_events.model
-      `).all(outputDay, outputDay, outputDay);
+      `).all(outputDay, outputDay, outputDay, outputDay);
       const totals = new Map();
       for (const row of rows) {
         const userId = Number(row.user_id);
@@ -1129,11 +1181,14 @@ const modelOutputDb = {
           userId, todayInputTokens: 0, todayCachedInputTokens: 0, totalInputTokens: 0,
           totalCachedInputTokens: 0, todayOutputTokens: 0, totalOutputTokens: 0,
           todayEstimatedCredits: 0, totalEstimatedCredits: 0, hasUnknownPricing: false,
+          todayCostUsd: 0, totalCostUsd: 0, hasUnknownCostPricing: false,
         };
         const todayInputTokens = Number(row.today_input_tokens || 0);
         const todayCachedInputTokens = Number(row.today_cached_input_tokens || 0);
+        const todayCacheWriteTokens = Number(row.today_cache_write_tokens || 0);
         const totalInputTokens = Number(row.total_input_tokens || 0);
         const totalCachedInputTokens = Number(row.total_cached_input_tokens || 0);
+        const totalCacheWriteTokens = Number(row.total_cache_write_tokens || 0);
         const todayOutputTokens = Number(row.today_output_tokens || 0);
         const totalOutputTokens = Number(row.total_output_tokens || 0);
         total.todayInputTokens += todayInputTokens;
@@ -1147,6 +1202,19 @@ const modelOutputDb = {
         if ((todayInputTokens > 0 || todayOutputTokens > 0) && todayCredits === null) total.hasUnknownPricing = true;
         total.todayEstimatedCredits += todayCredits || 0;
         total.totalEstimatedCredits += allCredits || 0;
+        const todayCostUsd = estimateModelCostUsd({
+          provider: row.provider, model: row.model, day: outputDay,
+          inputTokens: todayInputTokens, cachedInputTokens: todayCachedInputTokens,
+          cacheWriteTokens: todayCacheWriteTokens, outputTokens: todayOutputTokens,
+        });
+        const totalCostUsd = estimateModelCostUsd({
+          provider: row.provider, model: row.model,
+          inputTokens: totalInputTokens, cachedInputTokens: totalCachedInputTokens,
+          cacheWriteTokens: totalCacheWriteTokens, outputTokens: totalOutputTokens,
+        });
+        if ((todayInputTokens > 0 || todayOutputTokens > 0) && todayCostUsd === null) total.hasUnknownCostPricing = true;
+        total.todayCostUsd += todayCostUsd || 0;
+        total.totalCostUsd += totalCostUsd || 0;
         totals.set(userId, total);
       }
       return [...totals.values()];
@@ -1165,6 +1233,7 @@ const modelOutputDb = {
           model,
           SUM(input_token_count) AS input_tokens,
           SUM(cached_input_token_count) AS cached_input_tokens,
+          SUM(cache_write_token_count) AS cache_write_tokens,
           SUM(token_count) AS output_tokens
         FROM model_output_events
         WHERE user_id = ?
@@ -1172,11 +1241,14 @@ const modelOutputDb = {
         ORDER BY output_day ASC
       `).all(userId);
       const rowsByDay = new Map();
+      // 按模型聚合的花销明细（全时段 + 所选窗口），供统计面板展开查看
+      const modelTotals = new Map();
       for (const row of rawRows) {
         const day = String(row.day);
-        const current = rowsByDay.get(day) || { day, inputTokens: 0, cachedInputTokens: 0, outputTokens: 0, estimatedCredits: 0, hasUnknownPricing: false };
+        const current = rowsByDay.get(day) || { day, inputTokens: 0, cachedInputTokens: 0, outputTokens: 0, estimatedCredits: 0, hasUnknownPricing: false, costUsd: 0, hasUnknownCostPricing: false };
         const inputTokens = Number(row.input_tokens || 0);
         const cachedInputTokens = Number(row.cached_input_tokens || 0);
+        const cacheWriteTokens = Number(row.cache_write_tokens || 0);
         const outputTokens = Number(row.output_tokens || 0);
         current.inputTokens += inputTokens;
         current.cachedInputTokens += cachedInputTokens;
@@ -1184,11 +1256,33 @@ const modelOutputDb = {
         const credits = row.provider === 'codex' ? estimateCodexCredits({ model: row.model, inputTokens, cachedInputTokens, outputTokens }) : null;
         if ((inputTokens > 0 || outputTokens > 0) && credits === null) current.hasUnknownPricing = true;
         current.estimatedCredits += credits || 0;
+        const costUsd = estimateModelCostUsd({
+          provider: row.provider, model: row.model, day,
+          inputTokens, cachedInputTokens, cacheWriteTokens, outputTokens,
+        });
+        if ((inputTokens > 0 || outputTokens > 0) && costUsd === null) current.hasUnknownCostPricing = true;
+        current.costUsd += costUsd || 0;
         rowsByDay.set(day, current);
+
+        const modelKey = `${row.provider || 'unknown'}::${row.model || 'unknown'}`;
+        const modelTotal = modelTotals.get(modelKey) || {
+          provider: row.provider || 'unknown', model: row.model || 'unknown',
+          inputTokens: 0, cachedInputTokens: 0, cacheWriteTokens: 0, outputTokens: 0,
+          costUsd: 0, windowCostUsd: 0, hasUnknownCostPricing: false,
+        };
+        modelTotal.inputTokens += inputTokens;
+        modelTotal.cachedInputTokens += cachedInputTokens;
+        modelTotal.cacheWriteTokens += cacheWriteTokens;
+        modelTotal.outputTokens += outputTokens;
+        modelTotal.costUsd += costUsd || 0;
+        if (day >= startDay && day <= endDay) modelTotal.windowCostUsd += costUsd || 0;
+        if ((inputTokens > 0 || outputTokens > 0) && costUsd === null) modelTotal.hasUnknownCostPricing = true;
+        modelTotals.set(modelKey, modelTotal);
       }
       const allRows = [...rowsByDay.values()].sort((left, right) => left.day.localeCompare(right.day));
       return {
         days: allRows.filter((row) => row.day >= startDay && row.day <= endDay),
+        models: [...modelTotals.values()].sort((left, right) => right.costUsd - left.costUsd),
         summary: {
           lifetimeOutputTokens: allRows.reduce((sum, row) => sum + row.outputTokens, 0),
           peakOutputTokens: allRows.reduce((peak, row) => Math.max(peak, row.outputTokens), 0),
@@ -1196,12 +1290,16 @@ const modelOutputDb = {
           lifetimeInputTokens: allRows.reduce((sum, row) => sum + row.inputTokens, 0),
           peakInputTokens: allRows.reduce((peak, row) => Math.max(peak, row.inputTokens), 0),
           modelInputDays: allRows.filter((row) => row.inputTokens > 0).length,
+          lifetimeCostUsd: allRows.reduce((sum, row) => sum + row.costUsd, 0),
+          peakCostUsd: allRows.reduce((peak, row) => Math.max(peak, row.costUsd), 0),
+          costDays: allRows.filter((row) => row.costUsd > 0).length,
         },
       };
     } catch (err) {
       console.warn('modelOutputDb.getUsageOverview failed:', err.message);
       return {
         days: [],
+        models: [],
         summary: {
           lifetimeOutputTokens: 0,
           peakOutputTokens: 0,
@@ -1209,6 +1307,9 @@ const modelOutputDb = {
           lifetimeInputTokens: 0,
           peakInputTokens: 0,
           modelInputDays: 0,
+          lifetimeCostUsd: 0,
+          peakCostUsd: 0,
+          costDays: 0,
         },
       };
     }

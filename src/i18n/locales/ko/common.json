@@ -38,7 +38,16 @@
     "dailyOutputPeak": "일일 최대 출력",
     "less": "적음",
     "more": "많음",
-    "weekdays": { "mon": "월", "wed": "수", "fri": "금" }
+    "weekdays": { "mon": "월", "wed": "수", "fri": "금" },
+    "costActivity": "모델 비용 활동",
+    "dayCost": "일일 비용",
+    "totalCost": "누적 비용",
+    "dailyCostPeak": "일일 최고 비용",
+    "spend": "비용",
+    "modelCostBreakdown": "모델별 비용",
+    "costRateCard": "공식 요금표 기준 추정",
+    "partialCostPricing": "일부 사용량은 모델 공개 요금이 없습니다",
+    "model": "모델"
   },
   "goal": {
     "status": { "active": "목표 진행 중", "paused": "목표 일시 중지", "blocked": "목표 차단됨", "usageLimited": "사용량 제한", "budgetLimited": "예산 제한", "complete": "목표 완료" },
