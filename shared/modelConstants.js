@@ -14,6 +14,8 @@ export const CLAUDE_MODELS = {
   // Official Anthropic API IDs. Claude Code accepts these through the SDK model option.
   OPTIONS: [
     { value: 'claude-fable-5', label: 'Fable 5 (Mythos)' },
+    { value: 'claude-opus-5', label: 'Opus 5' },
+    { value: 'claude-sonnet-5', label: 'Sonnet 5' },
     { value: 'claude-opus-4-8', label: 'Opus 4.8' },
     { value: 'claude-opus-4-7', label: 'Opus 4.7' },
     { value: 'claude-opus-4-6', label: 'Opus 4.6' },
@@ -47,13 +49,13 @@ export const CLAUDE_EFFORT_LEVELS = {
  * 镜像 SDK cli.js 的门控逻辑：
  *  - low/medium/high：所有模型通用
  *  - max：除 haiku 外的模型（opus / sonnet）
- *  - xhigh：仅 opus-4-7 / opus-4-8（更高代际）
+ *  - xhigh：仅 opus-4-7 / opus-4-8 / opus-5 / sonnet-5 / fable（更高代际）
  */
 export function getClaudeEffortOptions(model) {
   const id = String(model || '').toLowerCase();
   const isHaiku = id.includes('haiku');
   const isOpus = id.includes('opus');
-  const supportsXhigh = id.includes('opus-4-7') || id.includes('opus-4-8') || id.includes('fable');
+  const supportsXhigh = id.includes('opus-4-7') || id.includes('opus-4-8') || id.includes('opus-5') || id.includes('sonnet-5') || id.includes('fable');
   const supportsMax = !isHaiku; // opus + sonnet
   return CLAUDE_EFFORT_LEVELS.OPTIONS.filter((opt) => {
     if (opt.value === 'xhigh') return supportsXhigh;
