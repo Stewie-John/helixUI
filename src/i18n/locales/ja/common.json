@@ -1,4 +1,11 @@
 {
+  "errorBoundary": {
+    "title": "問題が発生しました",
+    "description": "予期しないエラーが発生しました。ページを再読み込みしてください。解消しない場合はキャッシュを消去して再試行してください。",
+    "details": "エラーの詳細",
+    "reload": "ページを再読み込み",
+    "clearAndReload": "キャッシュを消去して再試行"
+  },
   "hud": {
     "dailyInput": "入力とモデル使用量",
     "charactersToday": "今日の入力文字",
@@ -291,5 +298,14 @@
       "updateAvailable": "アップデートあり",
       "closeSidebar": "サイドバーを閉じる"
     }
+  },
+  "userAvatar": {
+    "changeAvatar": "クリックしてアバターを変更",
+    "alt": "ユーザーアバター"
+  },
+  "theme": {
+    "light": "ライトモード",
+    "dark": "ダークモード",
+    "tech": "テックモード"
   }
 }

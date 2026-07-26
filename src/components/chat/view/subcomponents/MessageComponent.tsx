@@ -300,13 +300,14 @@ function PendingDots() {
 
 /* ── 发送失败：闪烁红三角 + 绿色重发按钮 ─────────────────────── */
 function FailedIndicator({ onResend }: { onResend: () => void }) {
+  const { t } = useTranslation('chat');
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, paddingBottom: 4 }}>
       {/* 绿色重发按钮（微信风格） */}
       <button
         type="button"
         onClick={onResend}
-        title="重新发送"
+        title={t('editMessage.resend')}
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           width: 26, height: 26, borderRadius: '50%',
@@ -340,21 +341,15 @@ function FailedIndicator({ onResend }: { onResend: () => void }) {
 // ── 压缩进度条组件（统一处理"进行中"和"完成"两种模式）────────────────────
 interface CompactSummaryBarProps {
   mode: 'in-progress' | 'done';
-  lang: string;
 }
-const CompactSummaryBar = ({ mode, lang }: CompactSummaryBarProps) => {
+const CompactSummaryBar = ({ mode }: CompactSummaryBarProps) => {
+  const { t } = useTranslation('chat');
   const [progress, setProgress] = useState(0);
   const [isDone, setIsDone] = useState(false);
   const rafRef = useRef<number | null>(null);
 
-  const labelCompacting = lang.startsWith('zh') ? '正在压缩上下文'
-    : lang.startsWith('ja') ? 'コンテキストを圧縮中'
-    : lang.startsWith('ko') ? '컨텍스트 압축 중'
-    : 'Compacting context';
-  const labelDone = lang.startsWith('zh') ? '压缩完成'
-    : lang.startsWith('ja') ? '圧縮完了'
-    : lang.startsWith('ko') ? '압축 완료'
-    : 'Compacted';
+  const labelCompacting = t('compactSummary.compacting');
+  const labelDone = t('compactSummary.done');
 
   useEffect(() => {
     if (mode === 'done') {
@@ -426,7 +421,7 @@ const CompactSummaryBar = ({ mode, lang }: CompactSummaryBarProps) => {
 };
 
 const MessageComponent = memo(({ message, index, prevMessage, createDiff, onFileOpen, onShowSettings, onGrantToolPermission, autoExpandTools, showRawParameters, showThinking, selectedProject, provider, onDeleteMessage, onEditMessage, onStartNewSession, userAvatarUrl }: MessageComponentProps) => {
-  const { t, i18n } = useTranslation('chat');
+  const { t } = useTranslation('chat');
   const avatarUrl = userAvatarUrl ?? null;
   const { isMobile } = useDeviceSettings({ trackPWA: false });
   const isGrouped = prevMessage && prevMessage.type === message.type &&
@@ -505,20 +500,19 @@ const MessageComponent = memo(({ message, index, prevMessage, createDiff, onFile
   if (message.type === 'compact-progress') {
     const progress = Number(message.compactProgress ?? 0);
     const done = Boolean(message.compactDone);
-    const lang = i18n.language;
 
     // progress===0 → Claude 原生压缩进行中，使用动画组件缓慢爬行
     if (progress === 0 && !done) {
       return (
         <div ref={messageRef} className="px-3 sm:px-0 py-1">
-          <CompactSummaryBar mode="in-progress" lang={lang} />
+          <CompactSummaryBar mode="in-progress" />
         </div>
       );
     }
 
     // 非 Claude（Codex/Cursor/Gemini）事件驱动进度，CSS transition 处理跳变
-    const labelCompacting = lang.startsWith('zh') ? '正在压缩上下文' : lang.startsWith('ja') ? 'コンテキストを圧縮中' : lang.startsWith('ko') ? '컨텍스트 압축 중' : 'Compacting context';
-    const labelDone = lang.startsWith('zh') ? '压缩完成' : lang.startsWith('ja') ? '圧縮完了' : lang.startsWith('ko') ? '압축 완료' : 'Compacted';
+    const labelCompacting = t('compactSummary.compacting');
+    const labelDone = t('compactSummary.done');
     return (
       <div ref={messageRef} className="px-3 sm:px-0 py-1">
         <div style={{
@@ -984,7 +978,7 @@ const MessageComponent = memo(({ message, index, prevMessage, createDiff, onFile
               </div>
             ) : message.isCompactSummary ? (
               /* Claude 原生压缩完成：0%→100% 动画后转绿，替代丑陋的 details 折叠块 */
-              <CompactSummaryBar mode="done" lang={i18n.language} />
+              <CompactSummaryBar mode="done" />
             ) : message.isThinking ? (
               /* Thinking messages - collapsible by default */
               <div className="codex-terminal-body text-sm text-gray-700 dark:text-gray-300">
@@ -1071,14 +1065,14 @@ const MessageComponent = memo(({ message, index, prevMessage, createDiff, onFile
                 {message.isImageDimensionError && onStartNewSession && (
                   <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 rounded-lg">
                     <p className="text-xs text-amber-800 dark:text-amber-300 mb-2">
-                      💡 您的历史对话记录已保存。您可以新建一个会话继续对话，之前的会话可在左侧历史记录中查看。
+                      {t('imageDimensionError.notice')}
                     </p>
                     <button
                       type="button"
                       onClick={onStartNewSession}
                       className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 hover:bg-amber-700 text-white transition-colors"
                     >
-                      新建会话继续对话
+                      {t('imageDimensionError.startNewSession')}
                     </button>
                   </div>
                 )}

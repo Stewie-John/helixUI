@@ -476,5 +476,25 @@
       "title": "About Codex MCP",
       "description": "Codex supports stdio-based MCP servers. You can add servers that extend Codex's capabilities with additional tools and resources."
     }
+  },
+  "customProviders": {
+    "title": "Custom Providers",
+    "description": "Connect models such as DeepSeek, Qwen or Mistral through an Anthropic API compatible proxy (e.g. LiteLLM, OneAPI)",
+    "add": "+ Add",
+    "edit": "Edit",
+    "delete": "Delete",
+    "empty": "No custom providers yet. Click \"+ Add\" to get started",
+    "formTitleEdit": "Edit Provider",
+    "formTitleNew": "New Provider",
+    "nameLabel": "Name *",
+    "modelLabel": "Default model *",
+    "baseUrlLabel": "Base URL *",
+    "baseUrlHint": "(Anthropic API compatible proxy address)",
+    "descriptionLabel": "Description (optional)",
+    "hideApiKey": "Hide",
+    "showApiKey": "Show",
+    "save": "Save",
+    "cancel": "Cancel",
+    "usage": "<b>How to use:</b> You need a proxy that is compatible with the Anthropic Messages API. We recommend <b>LiteLLM</b> (<c>litellm --model deepseek/deepseek-chat --port 4000</c>) or OneAPI / NewAPI. The Base URL is usually <c>http://host:port/v1</c> or <c>http://host:port</c>."
   }
 }

@@ -38,5 +38,27 @@
   "binaryFile": {
     "title": "Binary File",
     "message": "The file \"{{fileName}}\" cannot be displayed in the text editor because it is a binary file."
+  },
+  "imageViewer": {
+    "zoomOut": "Zoom out",
+    "resetZoom": "Reset zoom",
+    "zoomIn": "Zoom in",
+    "rotate": "Rotate 90°",
+    "download": "Download",
+    "close": "Close (Esc)",
+    "loading": "Loading..."
+  },
+  "fileTree": {
+    "loadingChildren": "Loading..."
+  },
+  "fileConflict": {
+    "titleSingle": "An item with the same name already exists in this location",
+    "titleMultiple": "{{total}} items with the same name already exist in this location",
+    "descriptionSingle": "An item named \"<b>{{name}}</b>\" already exists. Do you want to replace it, or keep both?",
+    "descriptionMultiple": "The following items already exist. You can replace them all, keep both (auto-rename), or skip them.",
+    "keepBoth": "Keep Both",
+    "skip": "Skip",
+    "replace": "Replace",
+    "cancel": "Cancel"
   }
 }

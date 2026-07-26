@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 // localStorage 存储键
 const AVATAR_STORAGE_KEY = 'user_custom_avatar';
@@ -11,6 +12,7 @@ const AVATAR_STORAGE_KEY = 'user_custom_avatar';
  * - 上传后以 base64 存入 localStorage 持久化
  */
 export function UserAvatar() {
+  const { t } = useTranslation('common');
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
   const [isHovered, setIsHovered] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -46,13 +48,13 @@ export function UserAvatar() {
       onClick={handleClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      title="点击更换头像"
+      title={t('userAvatar.changeAvatar')}
     >
       {/* 头像主体：有自定义图片则显示图片，否则显示默认蓝色 U */}
       {avatarSrc ? (
         <img
           src={avatarSrc}
-          alt="用户头像"
+          alt={t('userAvatar.alt')}
           className="w-full h-full object-cover rounded-full"
         />
       ) : (

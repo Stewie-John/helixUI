@@ -476,5 +476,25 @@
       "title": "Codex MCPについて",
       "description": "Codexはstdioベースのツールサーバーをサポートしています。追加のツールやリソースでCodexの機能を拡張するサーバーを追加できます。"
     }
+  },
+  "customProviders": {
+    "title": "カスタム Provider",
+    "description": "Anthropic API 互換のプロキシ（LiteLLM、OneAPI など）経由で DeepSeek、Qwen、Mistral などのモデルを利用できます",
+    "add": "+ 追加",
+    "edit": "編集",
+    "delete": "削除",
+    "empty": "カスタム Provider はまだありません。「+ 追加」をクリックして設定を開始してください",
+    "formTitleEdit": "Provider を編集",
+    "formTitleNew": "Provider を新規作成",
+    "nameLabel": "名前 *",
+    "modelLabel": "デフォルトモデル *",
+    "baseUrlLabel": "Base URL *",
+    "baseUrlHint": "（Anthropic API 互換のプロキシアドレス）",
+    "descriptionLabel": "説明（任意）",
+    "hideApiKey": "非表示",
+    "showApiKey": "表示",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "usage": "<b>使い方：</b>Anthropic Messages API 互換のプロキシが必要です。<b>LiteLLM</b>（<c>litellm --model deepseek/deepseek-chat --port 4000</c>）または OneAPI / NewAPI を推奨します。Base URL は通常 <c>http://host:port/v1</c> または <c>http://host:port</c> の形式です。"
   }
 }

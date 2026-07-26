@@ -1,3 +1,4 @@
+import i18n from '../../../../i18n/config.js';
 import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useRef, useState, Component } from 'react';
 import type { Dispatch, MouseEvent as ReactMouseEvent, RefObject, SetStateAction, TouchEvent as ReactTouchEvent } from 'react';
@@ -84,7 +85,7 @@ class MessageErrorBoundary extends Component<{ children: ReactNode }, { hasError
     if (this.state.hasError) {
       return (
         <div className="my-1 px-3 py-1.5 text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/40 rounded opacity-70">
-          ⚠ 消息渲染失败：{this.state.msg}
+          {i18n.t('chat:messageError.renderFailed', { error: this.state.msg })}
         </div>
       );
     }
@@ -711,7 +712,7 @@ export default function ChatMessagesPane({
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
           </svg>
-          回到底部
+          {t('input.scrollToBottom')}
         </button>
       )}
 

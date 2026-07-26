@@ -111,6 +111,24 @@
     },
     "technicalDetails": "기술 상세"
   },
+  "gemini": {
+    "permissionMode": "Gemini 권한 모드",
+    "description": "Gemini CLI가 작업 승인을 처리하는 방식을 제어합니다.",
+    "modes": {
+      "default": {
+        "title": "표준 (승인 요청)",
+        "description": "Gemini는 명령어 실행, 파일 쓰기, 웹 리소스 가져오기 전에 승인을 요청합니다."
+      },
+      "autoEdit": {
+        "title": "자동 편집 (파일 승인 건너뛰기)",
+        "description": "Gemini는 파일 편집과 웹 가져오기를 자동으로 승인하지만, 셸 명령어에 대해서는 여전히 승인을 요청합니다."
+      },
+      "yolo": {
+        "title": "YOLO (모든 권한 무시)",
+        "description": "Gemini가 승인을 요청하지 않고 모든 작업을 실행합니다. 주의해서 사용하세요."
+      }
+    }
+  },
   "input": {
     "placeholder": "/를 입력하여 명령어, @를 입력하여 파일, 또는 {{provider}}에게 무엇이든 물어보세요...",
     "placeholderDefault": "메시지를 입력하세요...",
@@ -127,6 +145,8 @@
     "showAllCommands": "모든 명령어 보기",
     "clearInput": "입력 지우기",
     "scrollToBottom": "맨 아래로 스크롤",
+    "removeImage": "제거",
+    "minimizeToBubble": "플로팅 버튼으로 최소화",
     "voice": {
       "start": "음성 입력 시작",
       "stop": "녹음을 중지하고 텍스트로 변환",
@@ -238,7 +258,14 @@
     "resumeSession": "세션 재개: {{displayName}}...",
     "runCommand": "{{projectName}}에서 {{command}} 실행",
     "startCli": "{{projectName}}에서 Claude CLI 시작",
-    "defaultCommand": "명령어"
+    "defaultCommand": "명령어",
+    "authPanel": {
+      "hint": "브라우저에서 인증 링크를 열어 로그인하세요. 인증 코드를 붙여넣을 필요가 없습니다:",
+      "openInBrowser": "브라우저에서 열기",
+      "copyLink": "링크 복사",
+      "copied": "복사됨",
+      "showAuthLink": "인증 링크 표시"
+    }
   },
   "projectSelection": {
     "startChatWithProvider": "{{provider}}와 채팅을 시작하려면 프로젝트를 선택하세요"
@@ -256,5 +283,16 @@
   "terminalOutput": {
     "denseHidden": "가독성이 낮은 출력 자동 압축 · {{lines}}줄 · {{characters}}자",
     "progressCompressed": "반복 진행 출력 자동 압축 · {{updates}}회 업데이트 · {{characters}}자"
+  },
+  "imageDimensionError": {
+    "notice": "💡 대화 기록이 저장되었습니다. 새 세션을 만들어 대화를 계속할 수 있으며, 이전 세션은 왼쪽 기록 목록에서 확인할 수 있습니다.",
+    "startNewSession": "새 세션으로 계속하기"
+  },
+  "messageError": {
+    "renderFailed": "⚠ 메시지 렌더링에 실패했습니다: {{error}}"
+  },
+  "compactSummary": {
+    "compacting": "컨텍스트 압축 중",
+    "done": "압축 완료"
   }
 }

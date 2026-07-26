@@ -1,4 +1,11 @@
 {
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "description": "The app hit an unexpected error. Try reloading the page. If it keeps happening, clear the cached data and retry.",
+    "details": "Error details",
+    "reload": "Reload page",
+    "clearAndReload": "Clear cache and retry"
+  },
   "hud": {
     "dailyInput": "INPUT & MODEL USAGE",
     "charactersToday": "ENTERED CHARS TODAY",
@@ -291,5 +298,14 @@
       "updateAvailable": "Update available",
       "closeSidebar": "Close sidebar"
     }
+  },
+  "userAvatar": {
+    "changeAvatar": "Click to change avatar",
+    "alt": "User avatar"
+  },
+  "theme": {
+    "light": "Light mode",
+    "dark": "Dark mode",
+    "tech": "Tech mode"
   }
 }

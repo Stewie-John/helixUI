@@ -43,7 +43,8 @@ class AppErrorBoundary extends Component<
   handleClearAndReload = () => {
     try {
       // 清除可能导致崩溃的缓存数据
-      const keysToKeep = ['auth-token', 'theme'];
+      // userLanguage 一起清掉的话，用户每次从崩溃里恢复都会被打回英文。
+      const keysToKeep = ['auth-token', 'theme', 'userLanguage'];
       const keysToRemove: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
@@ -86,10 +87,10 @@ class AppErrorBoundary extends Component<
           >
             <div style={{ fontSize: 40, marginBottom: 16 }}>⚠</div>
             <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
-              页面加载出错
+              {i18n.t('common:errorBoundary.title')}
             </h2>
             <p style={{ fontSize: 14, color: '#94a3b8', marginBottom: 20, lineHeight: 1.5 }}>
-              应用发生了意外错误，请尝试刷新页面。如果问题持续出现，可尝试清除缓存后重试。
+              {i18n.t('common:errorBoundary.description')}
             </p>
 
             {this.state.error && (
@@ -106,7 +107,7 @@ class AppErrorBoundary extends Component<
                 }}
               >
                 <summary style={{ cursor: 'pointer', marginBottom: 4, color: '#f87171' }}>
-                  错误详情
+                  {i18n.t('common:errorBoundary.details')}
                 </summary>
                 <pre
                   style={{
@@ -137,7 +138,7 @@ class AppErrorBoundary extends Component<
                   cursor: 'pointer',
                 }}
               >
-                刷新页面
+                {i18n.t('common:errorBoundary.reload')}
               </button>
               <button
                 onClick={this.handleClearAndReload}
@@ -152,7 +153,7 @@ class AppErrorBoundary extends Component<
                   cursor: 'pointer',
                 }}
               >
-                清除缓存并重试
+                {i18n.t('common:errorBoundary.clearAndReload')}
               </button>
             </div>
           </div>

@@ -145,6 +145,8 @@
     "showAllCommands": "Show all commands",
     "clearInput": "Clear input",
     "scrollToBottom": "Scroll to bottom",
+    "removeImage": "Remove",
+    "minimizeToBubble": "Minimize to floating bubble",
     "voice": {
       "start": "Start voice input",
       "stop": "Stop recording and transcribe",
@@ -256,7 +258,14 @@
     "resumeSession": "Resume session: {{displayName}}...",
     "runCommand": "Run {{command}} in {{projectName}}",
     "startCli": "Starting Claude CLI in {{projectName}}",
-    "defaultCommand": "command"
+    "defaultCommand": "command",
+    "authPanel": {
+      "hint": "Open the authorization link in your browser to sign in — no verification code needed:",
+      "openInBrowser": "Open in browser",
+      "copyLink": "Copy link",
+      "copied": "Copied",
+      "showAuthLink": "Show authorization link"
+    }
   },
   "projectSelection": {
     "startChatWithProvider": "Select a project to start chatting with {{provider}}"
@@ -274,5 +283,16 @@
   "terminalOutput": {
     "denseHidden": "Dense generated output compressed · {{lines}} lines · {{characters}} chars",
     "progressCompressed": "Repeated progress output compressed · {{updates}} updates · {{characters}} chars"
+  },
+  "imageDimensionError": {
+    "notice": "💡 Your conversation history has been saved. You can start a new session to keep chatting; the previous session remains available in the history list on the left.",
+    "startNewSession": "Start a new session"
+  },
+  "messageError": {
+    "renderFailed": "⚠ Failed to render message: {{error}}"
+  },
+  "compactSummary": {
+    "compacting": "Compacting context",
+    "done": "Compacted"
   }
 }

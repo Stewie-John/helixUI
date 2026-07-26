@@ -1,4 +1,11 @@
 {
+  "errorBoundary": {
+    "title": "문제가 발생했습니다",
+    "description": "예기치 않은 오류가 발생했습니다. 페이지를 새로고침해 보세요. 계속되면 캐시를 지우고 다시 시도하세요.",
+    "details": "오류 상세 정보",
+    "reload": "페이지 새로고침",
+    "clearAndReload": "캐시 지우고 재시도"
+  },
   "hud": {
     "dailyInput": "입력 및 모델 사용량",
     "charactersToday": "오늘 입력 문자",
@@ -291,5 +298,14 @@
       "updateAvailable": "업데이트 가능",
       "closeSidebar": "사이드바 닫기"
     }
+  },
+  "userAvatar": {
+    "changeAvatar": "클릭하여 아바타 변경",
+    "alt": "사용자 아바타"
+  },
+  "theme": {
+    "light": "라이트 모드",
+    "dark": "다크 모드",
+    "tech": "테크 모드"
   }
 }

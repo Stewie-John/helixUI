@@ -111,6 +111,24 @@
     },
     "technicalDetails": "技术细节"
   },
+  "gemini": {
+    "permissionMode": "Gemini 权限模式",
+    "description": "控制 Gemini CLI 如何处理操作审批。",
+    "modes": {
+      "default": {
+        "title": "标准（请求审批）",
+        "description": "Gemini 在执行命令、写入文件和获取网络资源之前会请求审批。"
+      },
+      "autoEdit": {
+        "title": "自动编辑（跳过文件审批）",
+        "description": "Gemini 会自动批准文件编辑和网络获取，但对 shell 命令仍会请求审批。"
+      },
+      "yolo": {
+        "title": "YOLO（绕过所有权限）",
+        "description": "Gemini 将执行所有操作而不请求审批。请谨慎使用。"
+      }
+    }
+  },
   "input": {
     "placeholder": "输入 / 调用命令，@ 选择文件，或向 {{provider}} 提问...",
     "placeholderDefault": "输入您的消息...",
@@ -127,6 +145,8 @@
     "showAllCommands": "显示所有命令",
     "clearInput": "清空输入",
     "scrollToBottom": "滚动到底部",
+    "removeImage": "移除",
+    "minimizeToBubble": "最小化为悬浮球",
     "voice": {
       "start": "开始语音输入",
       "stop": "停止录音并转成文字",
@@ -238,7 +258,14 @@
     "resumeSession": "恢复会话：{{displayName}}...",
     "runCommand": "在 {{projectName}} 中运行 {{command}}",
     "startCli": "在 {{projectName}} 中启动 Claude CLI",
-    "defaultCommand": "命令"
+    "defaultCommand": "命令",
+    "authPanel": {
+      "hint": "在浏览器中打开授权链接完成登录，无需粘贴验证码：",
+      "openInBrowser": "在浏览器中打开",
+      "copyLink": "复制链接",
+      "copied": "已复制",
+      "showAuthLink": "显示授权链接"
+    }
   },
   "projectSelection": {
     "startChatWithProvider": "选择一个项目以开始与 {{provider}} 聊天"
@@ -256,5 +283,16 @@
   "terminalOutput": {
     "denseHidden": "已自动压缩低可读性输出 · {{lines}} 行 · {{characters}} 字符",
     "progressCompressed": "已自动压缩重复进度输出 · {{updates}} 次更新 · {{characters}} 字符"
+  },
+  "imageDimensionError": {
+    "notice": "💡 您的历史对话记录已保存。您可以新建一个会话继续对话，之前的会话可在左侧历史记录中查看。",
+    "startNewSession": "新建会话继续对话"
+  },
+  "messageError": {
+    "renderFailed": "⚠ 消息渲染失败：{{error}}"
+  },
+  "compactSummary": {
+    "compacting": "正在压缩上下文",
+    "done": "压缩完成"
   }
 }

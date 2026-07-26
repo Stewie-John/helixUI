@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import type { CustomProvider } from '../../../../../../types/app';
 
 const STORAGE_KEY = 'custom-providers';
@@ -103,9 +103,9 @@ export default function CustomProvidersSection() {
     <div>
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">自定义 Provider</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t('customProviders.title')}</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            通过兼容 Anthropic API 的代理（如 LiteLLM、OneAPI）接入 DeepSeek、Qwen、Mistral 等模型
+            {t('customProviders.description')}
           </p>
         </div>
         {!showForm && (
@@ -113,7 +113,7 @@ export default function CustomProvidersSection() {
             onClick={() => { setShowForm(true); setEditingId(null); setForm(EMPTY_FORM); setErrors({}); }}
             className="px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
           >
-            + 添加
+            {t('customProviders.add')}
           </button>
         )}
       </div>
@@ -132,13 +132,13 @@ export default function CustomProvidersSection() {
                   onClick={() => handleEdit(p)}
                   className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  编辑
+                  {t('customProviders.edit')}
                 </button>
                 <button
                   onClick={() => handleDelete(p.id)}
                   className="text-xs text-red-500 hover:text-red-600 transition-colors"
                 >
-                  删除
+                  {t('customProviders.delete')}
                 </button>
               </div>
             </div>
@@ -148,30 +148,30 @@ export default function CustomProvidersSection() {
 
       {providers.length === 0 && !showForm && (
         <div className="text-xs text-muted-foreground py-3 text-center border border-dashed border-border rounded-lg mb-4">
-          暂无自定义 Provider，点击「+ 添加」开始配置
+          {t('customProviders.empty')}
         </div>
       )}
 
       {/* Add / Edit form */}
       {showForm && (
         <div className="border border-border rounded-xl p-4 space-y-3 bg-muted/10 mb-4">
-          <p className="text-sm font-semibold text-foreground">{editingId ? '编辑 Provider' : '新增 Provider'}</p>
+          <p className="text-sm font-semibold text-foreground">{editingId ? t('customProviders.formTitleEdit') : t('customProviders.formTitleNew')}</p>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">名称 *</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t('customProviders.nameLabel')}</label>
               <input {...field('name')} placeholder="DeepSeek" className={inputClass(errors.name)} />
               {errors.name && <p className="text-xs text-red-500 mt-0.5">{errors.name}</p>}
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">默认模型 *</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t('customProviders.modelLabel')}</label>
               <input {...field('model')} placeholder="deepseek-chat" className={inputClass(errors.model)} />
               {errors.model && <p className="text-xs text-red-500 mt-0.5">{errors.model}</p>}
             </div>
           </div>
 
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Base URL * <span className="text-muted-foreground/60">（兼容 Anthropic API 的代理地址）</span></label>
+            <label className="text-xs text-muted-foreground mb-1 block">{t('customProviders.baseUrlLabel')} <span className="text-muted-foreground/60">{t('customProviders.baseUrlHint')}</span></label>
             <input {...field('baseURL')} placeholder="http://localhost:4000/v1" className={inputClass(errors.baseURL)} />
             {errors.baseURL && <p className="text-xs text-red-500 mt-0.5">{errors.baseURL}</p>}
           </div>
@@ -190,13 +190,13 @@ export default function CustomProvidersSection() {
                 onClick={() => setShowApiKey((v) => !v)}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
               >
-                {showApiKey ? '隐藏' : '显示'}
+                {showApiKey ? t('customProviders.hideApiKey') : t('customProviders.showApiKey')}
               </button>
             </div>
           </div>
 
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">描述（可选）</label>
+            <label className="text-xs text-muted-foreground mb-1 block">{t('customProviders.descriptionLabel')}</label>
             <input {...field('description')} placeholder="via LiteLLM proxy" className={inputClass()} />
           </div>
 
@@ -205,21 +205,23 @@ export default function CustomProvidersSection() {
               onClick={handleSave}
               className="px-4 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
             >
-              保存
+              {t('customProviders.save')}
             </button>
             <button
               onClick={resetForm}
               className="px-4 py-1.5 text-xs font-medium border border-border rounded-lg text-muted-foreground hover:text-foreground transition-colors"
             >
-              取消
+              {t('customProviders.cancel')}
             </button>
           </div>
 
           <div className="border-t border-border/50 pt-3">
             <p className="text-[11px] text-muted-foreground/70 leading-relaxed">
-              <strong>使用说明：</strong>需要一个兼容 Anthropic Messages API 的代理。
-              推荐使用 <strong>LiteLLM</strong>（<code>litellm --model deepseek/deepseek-chat --port 4000</code>）
-              或 OneAPI / NewAPI。Base URL 格式通常为 <code>http://host:port/v1</code> 或 <code>http://host:port</code>。
+              <Trans
+                t={t}
+                i18nKey="customProviders.usage"
+                components={{ b: <strong />, c: <code /> }}
+              />
             </p>
           </div>
         </div>

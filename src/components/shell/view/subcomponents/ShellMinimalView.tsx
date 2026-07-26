@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { RefObject } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { AuthCopyStatus } from '../../types/types';
 import { resolveAuthUrlForDisplay } from '../../utils/auth';
 
@@ -22,6 +23,7 @@ export default function ShellMinimalView({
   openAuthUrlInBrowser,
   copyAuthUrlToClipboard,
 }: ShellMinimalViewProps) {
+  const { t } = useTranslation('chat');
   const [authUrlCopyStatus, setAuthUrlCopyStatus] = useState<AuthCopyStatus>('idle');
   const [isAuthPanelHidden, setIsAuthPanelHidden] = useState(false);
 
@@ -53,7 +55,7 @@ export default function ShellMinimalView({
         <div className="absolute inset-x-0 bottom-0 z-20 border-t border-gray-700/80 bg-gray-900/95 p-3 backdrop-blur-sm">
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-xs text-gray-300">在浏览器中打开授权链接完成登录，无需粘贴验证码：</p>
+              <p className="text-xs text-gray-300">{t('shell.authPanel.hint')}</p>
               <button
                 type="button"
                 onClick={() => setIsAuthPanelHidden(true)}
@@ -80,7 +82,7 @@ export default function ShellMinimalView({
                 }}
                 className="flex-1 rounded bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700"
               >
-                在浏览器中打开
+                {t('shell.authPanel.openInBrowser')}
               </button>
 
               <button
@@ -91,7 +93,7 @@ export default function ShellMinimalView({
                 }}
                 className="flex-1 rounded bg-gray-700 px-3 py-2 text-xs font-medium text-white hover:bg-gray-600"
               >
-                {authUrlCopyStatus === 'copied' ? '已复制' : '复制链接'}
+                {authUrlCopyStatus === 'copied' ? t('shell.authPanel.copied') : t('shell.authPanel.copyLink')}
               </button>
             </div>
           </div>
@@ -105,7 +107,7 @@ export default function ShellMinimalView({
             onClick={() => setIsAuthPanelHidden(false)}
             className="rounded bg-gray-800/95 px-3 py-2 text-xs font-medium text-gray-100 shadow-lg backdrop-blur-sm hover:bg-gray-700"
           >
-            显示授权链接
+            {t('shell.authPanel.showAuthLink')}
           </button>
         </div>
       )}

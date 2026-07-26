@@ -1,5 +1,6 @@
 import type { ReactNode, RefObject } from 'react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronRight, Folder, FolderOpen, Loader2 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import FileContextMenu from '../../FileContextMenu';
@@ -96,6 +97,7 @@ export default function FileTreeNode({
   renameInputRef,
   operationLoading,
 }: FileTreeNodeProps) {
+  const { t } = useTranslation('codeEditor');
   const isDirectory = item.type === 'directory';
   const isOpen = isDirectory && expandedDirs.has(item.path);
   const hasChildren = Boolean(isDirectory && item.children && item.children.length > 0);
@@ -283,7 +285,7 @@ export default function FileTreeNode({
           {isLoadingChildren ? (
             <div className="flex items-center gap-2 py-1 text-muted-foreground" style={{ paddingLeft: `${(level + 1) * 16 + 4}px` }}>
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              <span className="text-xs">加载中...</span>
+              <span className="text-xs">{t('fileTree.loadingChildren')}</span>
             </div>
           ) : hasChildren ? (
             item.children?.map((child) => (

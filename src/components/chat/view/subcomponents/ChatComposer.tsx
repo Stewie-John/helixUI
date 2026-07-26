@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 
 // 输入框内嵌缩略图：图片粘贴后显示在输入框内左侧
 function InlineImagePreview({ file, onRemove }: { file: File; onRemove: () => void }) {
+  const { t } = useTranslation('chat');
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     const objectUrl = URL.createObjectURL(file);
@@ -25,7 +26,7 @@ function InlineImagePreview({ file, onRemove }: { file: File; onRemove: () => vo
         type="button"
         onClick={(e) => { e.stopPropagation(); onRemove(); }}
         className="absolute -top-1 -right-1 w-4 h-4 bg-black/80 text-white rounded-full text-[10px] leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
-        title="移除"
+        title={t('input.removeImage')}
       >×</button>
     </div>
   );
@@ -470,7 +471,7 @@ export default function ChatComposer({
             type="button"
             onClick={() => setIsMobileMinimized(true)}
             className="flex-shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
-            aria-label="最小化为悬浮球"
+            aria-label={t('input.minimizeToBubble')}
           >
             <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <circle cx="12" cy="12" r="9" />
@@ -726,7 +727,7 @@ export default function ChatComposer({
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               ) : (
-                <svg className="w-4 h-4 sm:w-[18px] sm:h-[18px]" fill="none" stroke="white" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-label="发送">
+                <svg className="w-4 h-4 sm:w-[18px] sm:h-[18px]" fill="none" stroke="white" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-label={t('input.send')}>
                   {/* 整体旋转 -45°，使火箭朝右上方 45° */}
                   <g transform="rotate(-45, 12, 12)">
                     {/* 飞船主体（机头稍长至 x=22） */}

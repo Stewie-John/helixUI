@@ -27,7 +27,8 @@
     "tool": "ツール",
     "claude": "Claude",
     "cursor": "Cursor",
-    "codex": "Codex"
+    "codex": "Codex",
+    "gemini": "Gemini"
   },
   "tools": {
     "settings": "ツール設定",
@@ -110,6 +111,24 @@
     },
     "technicalDetails": "技術的な詳細"
   },
+  "gemini": {
+    "permissionMode": "Gemini 権限モード",
+    "description": "Gemini CLI が操作の承認をどう扱うかを制御します。",
+    "modes": {
+      "default": {
+        "title": "標準（承認を求める）",
+        "description": "Gemini はコマンドの実行、ファイルの書き込み、Web リソースの取得の前に承認を求めます。"
+      },
+      "autoEdit": {
+        "title": "自動編集（ファイルの承認をスキップ）",
+        "description": "Gemini はファイル編集と Web 取得を自動的に承認しますが、シェルコマンドについては引き続き承認を求めます。"
+      },
+      "yolo": {
+        "title": "YOLO（すべての権限をバイパス）",
+        "description": "Gemini は承認を求めずにすべての操作を実行します。注意して使用してください。"
+      }
+    }
+  },
   "input": {
     "placeholder": "/ でコマンド、@ でファイル指定、または {{provider}} に何でも聞いてください...",
     "placeholderDefault": "メッセージを入力...",
@@ -124,6 +143,10 @@
     },
     "clickToChangeMode": "クリックで権限モードを変更（または入力欄でTab）",
     "showAllCommands": "すべてのコマンドを表示",
+    "clearInput": "入力をクリア",
+    "scrollToBottom": "一番下へスクロール",
+    "removeImage": "削除",
+    "minimizeToBubble": "フローティングボタンに最小化",
     "voice": {
       "start": "音声入力を開始",
       "stop": "録音を停止して文字に変換",
@@ -180,12 +203,14 @@
     "providerInfo": {
       "anthropic": "by Anthropic",
       "openai": "by OpenAI",
-      "cursorEditor": "AIコードエディタ"
+      "cursorEditor": "AIコードエディタ",
+      "google": "by Google"
     },
     "readyPrompt": {
       "claude": "{{model}}でClaudeを使用する準備ができました。下にメッセージを入力してください。",
       "cursor": "{{model}}でCursorを使用する準備ができました。下にメッセージを入力してください。",
       "codex": "{{model}}でCodexを使用する準備ができました。下にメッセージを入力してください。",
+      "gemini": "{{model}}でGeminiを使用する準備ができました。下にメッセージを入力してください。",
       "default": "上からプロバイダーを選択して開始してください"
     }
   },
@@ -202,7 +227,11 @@
       "showingOf": "{{total}}件中{{shown}}件を表示",
       "scrollToLoad": "上にスクロールしてさらに読み込む",
       "showingLast": "最新{{count}}件を表示（全{{total}}件）",
-      "loadEarlier": "過去のメッセージを読み込む"
+      "loadEarlier": "過去のメッセージを読み込む",
+      "loadAll": "すべてのメッセージを読み込む",
+      "loadingAll": "すべてのメッセージを読み込んでいます...",
+      "allLoaded": "すべてのメッセージを読み込みました",
+      "perfWarning": "すべてのメッセージを読み込みました — スクロールが遅くなる場合があります。\"一番下へスクロール\"をクリックするとパフォーマンスが回復します。"
     }
   },
   "shell": {
@@ -229,7 +258,20 @@
     "resumeSession": "セッションを再開: {{displayName}}...",
     "runCommand": "{{projectName}}で{{command}}を実行",
     "startCli": "{{projectName}}でClaude CLIを起動しています",
-    "defaultCommand": "コマンド"
+    "defaultCommand": "コマンド",
+    "authPanel": {
+      "hint": "ブラウザで認証リンクを開いてログインしてください。認証コードの貼り付けは不要です:",
+      "openInBrowser": "ブラウザで開く",
+      "copyLink": "リンクをコピー",
+      "copied": "コピーしました",
+      "showAuthLink": "認証リンクを表示"
+    }
+  },
+  "projectSelection": {
+    "startChatWithProvider": "プロジェクトを選択して{{provider}}とのチャットを開始してください"
+  },
+  "tasks": {
+    "nextTaskPrompt": "次のタスクを開始"
   },
   "assistantTurn": {
     "expand": "返信を展開",
@@ -241,5 +283,16 @@
   "terminalOutput": {
     "denseHidden": "可読性の低い出力を自動圧縮 · {{lines}} 行 · {{characters}} 文字",
     "progressCompressed": "反復進捗出力を自動圧縮 · {{updates}} 回更新 · {{characters}} 文字"
+  },
+  "imageDimensionError": {
+    "notice": "💡 会話履歴は保存されました。新しいセッションを作成して会話を続けられます。以前のセッションは左側の履歴から確認できます。",
+    "startNewSession": "新しいセッションで続ける"
+  },
+  "messageError": {
+    "renderFailed": "⚠ メッセージの表示に失敗しました: {{error}}"
+  },
+  "compactSummary": {
+    "compacting": "コンテキストを圧縮中",
+    "done": "圧縮完了"
   }
 }

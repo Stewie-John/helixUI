@@ -1,4 +1,11 @@
 {
+  "errorBoundary": {
+    "title": "页面加载出错",
+    "description": "应用发生了意外错误，请尝试刷新页面。如果问题持续出现，可尝试清除缓存后重试。",
+    "details": "错误详情",
+    "reload": "刷新页面",
+    "clearAndReload": "清除缓存并重试"
+  },
   "hud": {
     "dailyInput": "输入与模型用量",
     "charactersToday": "今日键入字符",
@@ -291,5 +298,14 @@
       "updateAvailable": "有可用更新",
       "closeSidebar": "关闭侧边栏"
     }
+  },
+  "userAvatar": {
+    "changeAvatar": "点击更换头像",
+    "alt": "用户头像"
+  },
+  "theme": {
+    "light": "浅色模式",
+    "dark": "深色模式",
+    "tech": "科技模式"
   }
 }

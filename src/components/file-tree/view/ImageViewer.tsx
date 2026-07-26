@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Download, X, ZoomIn, ZoomOut, RotateCw } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { authenticatedFetch } from '../../../utils/api';
@@ -10,6 +11,7 @@ type ImageViewerProps = {
 };
 
 export default function ImageViewer({ file, onClose }: ImageViewerProps) {
+  const { t } = useTranslation('codeEditor');
   const imagePath = `/api/projects/${file.projectName}/files/content?path=${encodeURIComponent(file.path)}`;
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -99,7 +101,7 @@ export default function ImageViewer({ file, onClose }: ImageViewerProps) {
               size="sm"
               onClick={() => setZoom((z) => Math.max(0.25, z - 0.25))}
               className="h-8 w-8 p-0"
-              title="缩小"
+              title={t('imageViewer.zoomOut')}
               disabled={zoom <= 0.25}
             >
               <ZoomOut className="h-4 w-4" />
@@ -110,7 +112,7 @@ export default function ImageViewer({ file, onClose }: ImageViewerProps) {
               type="button"
               onClick={() => setZoom(1)}
               className="px-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white tabular-nums min-w-[3rem] text-center"
-              title="重置缩放"
+              title={t('imageViewer.resetZoom')}
             >
               {Math.round(zoom * 100)}%
             </button>
@@ -121,7 +123,7 @@ export default function ImageViewer({ file, onClose }: ImageViewerProps) {
               size="sm"
               onClick={() => setZoom((z) => Math.min(4, z + 0.25))}
               className="h-8 w-8 p-0"
-              title="放大"
+              title={t('imageViewer.zoomIn')}
               disabled={zoom >= 4}
             >
               <ZoomIn className="h-4 w-4" />
@@ -136,7 +138,7 @@ export default function ImageViewer({ file, onClose }: ImageViewerProps) {
               size="sm"
               onClick={() => setRotation((r) => (r + 90) % 360)}
               className="h-8 w-8 p-0"
-              title="旋转 90°"
+              title={t('imageViewer.rotate')}
             >
               <RotateCw className="h-4 w-4" />
             </Button>
@@ -147,7 +149,7 @@ export default function ImageViewer({ file, onClose }: ImageViewerProps) {
               size="sm"
               onClick={handleDownload}
               className="h-8 w-8 p-0"
-              title="下载"
+              title={t('imageViewer.download')}
               disabled={!imageUrl}
             >
               <Download className="h-4 w-4" />
@@ -157,7 +159,7 @@ export default function ImageViewer({ file, onClose }: ImageViewerProps) {
             <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
 
             {/* 关闭 */}
-            <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0" title="关闭 (Esc)">
+            <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0" title={t('imageViewer.close')}>
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -168,7 +170,7 @@ export default function ImageViewer({ file, onClose }: ImageViewerProps) {
           {loading && (
             <div className="text-center text-gray-500 dark:text-gray-400">
               <div className="inline-block w-6 h-6 border-2 border-gray-300 dark:border-gray-600 border-t-blue-500 rounded-full animate-spin mb-2" />
-              <p className="text-sm">加载中...</p>
+              <p className="text-sm">{t('imageViewer.loading')}</p>
             </div>
           )}
           {!loading && imageUrl && (

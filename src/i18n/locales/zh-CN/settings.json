@@ -476,5 +476,25 @@
       "title": "关于 Codex MCP",
       "description": "Codex 支持基于 stdio 的 MCP 服务器。您可以添加服务器，通过额外的工具和资源来扩展 Codex 的功能。"
     }
+  },
+  "customProviders": {
+    "title": "自定义 Provider",
+    "description": "通过兼容 Anthropic API 的代理（如 LiteLLM、OneAPI）接入 DeepSeek、Qwen、Mistral 等模型",
+    "add": "+ 添加",
+    "edit": "编辑",
+    "delete": "删除",
+    "empty": "暂无自定义 Provider，点击「+ 添加」开始配置",
+    "formTitleEdit": "编辑 Provider",
+    "formTitleNew": "新增 Provider",
+    "nameLabel": "名称 *",
+    "modelLabel": "默认模型 *",
+    "baseUrlLabel": "Base URL *",
+    "baseUrlHint": "（兼容 Anthropic API 的代理地址）",
+    "descriptionLabel": "描述（可选）",
+    "hideApiKey": "隐藏",
+    "showApiKey": "显示",
+    "save": "保存",
+    "cancel": "取消",
+    "usage": "<b>使用说明：</b>需要一个兼容 Anthropic Messages API 的代理。推荐使用 <b>LiteLLM</b>（<c>litellm --model deepseek/deepseek-chat --port 4000</c>）或 OneAPI / NewAPI。Base URL 格式通常为 <c>http://host:port/v1</c> 或 <c>http://host:port</c>。"
   }
 }

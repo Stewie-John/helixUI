@@ -38,5 +38,27 @@
   "binaryFile": {
     "title": "二进制文件",
     "message": "文件 \"{{fileName}}\" 无法在文本编辑器中显示，因为它是二进制文件。"
+  },
+  "imageViewer": {
+    "zoomOut": "缩小",
+    "resetZoom": "重置缩放",
+    "zoomIn": "放大",
+    "rotate": "旋转 90°",
+    "download": "下载",
+    "close": "关闭 (Esc)",
+    "loading": "加载中..."
+  },
+  "fileTree": {
+    "loadingChildren": "加载中..."
+  },
+  "fileConflict": {
+    "titleSingle": "此位置已存在同名文件",
+    "titleMultiple": "此位置已存在 {{total}} 个同名文件",
+    "descriptionSingle": "名为「<b>{{name}}</b>」的文件已存在。要替换它，还是两者都保留？",
+    "descriptionMultiple": "下列文件已存在。你可以全部替换、两者都保留（自动改名），或跳过这些文件。",
+    "keepBoth": "两者都保留",
+    "skip": "跳过",
+    "replace": "替换",
+    "cancel": "取消"
   }
 }

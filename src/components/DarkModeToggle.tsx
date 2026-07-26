@@ -1,4 +1,5 @@
 import { Moon, Sun, Zap } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../contexts/ThemeContext';
 
 type DarkModeToggleProps = {
@@ -25,6 +26,7 @@ const THUMB_OFFSET = {
 type ThemeName = keyof typeof THUMB_OFFSET;
 
 function DarkModeToggle({ checked, onToggle, ariaLabel = 'Toggle theme' }: DarkModeToggleProps) {
+  const { t } = useTranslation('common');
   const { theme, cycleTheme } = useTheme();
 
   // 若外部受控（旧接口），退化为 light/dark 二值切换
@@ -48,7 +50,7 @@ function DarkModeToggle({ checked, onToggle, ariaLabel = 'Toggle theme' }: DarkM
       data-theme={currentTheme}
       aria-label={ariaLabel}
       aria-valuetext={currentTheme}
-      title={currentTheme === 'light' ? '浅色模式' : currentTheme === 'dark' ? '深色模式' : '科技模式'}
+      title={t(`theme.${currentTheme}`)}
     >
       <span className="sr-only">{ariaLabel}</span>
 

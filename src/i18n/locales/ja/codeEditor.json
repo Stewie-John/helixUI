@@ -38,5 +38,27 @@
   "binaryFile": {
     "title": "バイナリファイル",
     "message": "ファイル \"{{fileName}}\" はバイナリファイルのため、テキストエディタで表示できません。"
+  },
+  "imageViewer": {
+    "zoomOut": "縮小",
+    "resetZoom": "ズームをリセット",
+    "zoomIn": "拡大",
+    "rotate": "90°回転",
+    "download": "ダウンロード",
+    "close": "閉じる (Esc)",
+    "loading": "読み込み中..."
+  },
+  "fileTree": {
+    "loadingChildren": "読み込み中..."
+  },
+  "fileConflict": {
+    "titleSingle": "この場所には同じ名前のファイルが既に存在します",
+    "titleMultiple": "この場所には同じ名前のファイルが {{total}} 件既に存在します",
+    "descriptionSingle": "「<b>{{name}}</b>」という名前のファイルは既に存在します。置き換えますか、それとも両方を保持しますか？",
+    "descriptionMultiple": "以下のファイルは既に存在します。すべて置き換える、両方を保持する（自動的に名前を変更）、またはスキップすることができます。",
+    "keepBoth": "両方を保持",
+    "skip": "スキップ",
+    "replace": "置き換える",
+    "cancel": "キャンセル"
   }
 }

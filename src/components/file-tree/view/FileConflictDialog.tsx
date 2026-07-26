@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { AlertTriangle } from 'lucide-react';
 
 export type ConflictPolicy = 'replace' | 'keepBoth' | 'skip';
@@ -13,6 +14,7 @@ interface FileConflictDialogProps {
 // Mac Finder 风格的重名冲突对话框：覆盖 / 两者都保留 / 跳过 / 取消。
 // 当一次拖入/粘贴的文件与目标目录已有文件重名时弹出，选择应用于本批次的全部冲突项。
 function FileConflictDialog({ conflicts, onResolve }: FileConflictDialogProps) {
+  const { t } = useTranslation('codeEditor');
   const count = conflicts.length;
   const single = count === 1;
 
@@ -41,15 +43,20 @@ function FileConflictDialog({ conflicts, onResolve }: FileConflictDialogProps) {
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-foreground">
-              {single ? '此位置已存在同名文件' : `此位置已存在 ${count} 个同名文件`}
+              {single
+                ? t('fileConflict.titleSingle')
+                : t('fileConflict.titleMultiple', { total: count })}
             </p>
             <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
               {single ? (
-                <>
-                  名为「<span className="font-medium text-foreground break-all">{conflicts[0]}</span>」的文件已存在。要替换它，还是两者都保留？
-                </>
+                <Trans
+                  t={t}
+                  i18nKey="fileConflict.descriptionSingle"
+                  values={{ name: conflicts[0] }}
+                  components={{ b: <span className="font-medium text-foreground break-all" /> }}
+                />
               ) : (
-                <>下列文件已存在。你可以全部替换、两者都保留（自动改名），或跳过这些文件。</>
+                <>{t('fileConflict.descriptionMultiple')}</>
               )}
             </p>
             {!single && (
@@ -69,7 +76,7 @@ function FileConflictDialog({ conflicts, onResolve }: FileConflictDialogProps) {
             onClick={() => onResolve('keepBoth')}
             className="w-full h-9 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
           >
-            两者都保留
+            {t('fileConflict.keepBoth')}
           </button>
           <div className="flex gap-2">
             <button
@@ -77,14 +84,14 @@ function FileConflictDialog({ conflicts, onResolve }: FileConflictDialogProps) {
               onClick={() => onResolve('skip')}
               className="flex-1 h-9 rounded-lg border border-border bg-background text-sm font-medium hover:bg-muted transition-colors"
             >
-              跳过
+              {t('fileConflict.skip')}
             </button>
             <button
               type="button"
               onClick={() => onResolve('replace')}
               className="flex-1 h-9 rounded-lg border border-red-500/40 text-red-600 dark:text-red-400 text-sm font-medium hover:bg-red-500/10 transition-colors"
             >
-              替换
+              {t('fileConflict.replace')}
             </button>
           </div>
           <button
@@ -92,7 +99,7 @@ function FileConflictDialog({ conflicts, onResolve }: FileConflictDialogProps) {
             onClick={() => onResolve('cancel')}
             className="w-full h-8 mt-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
-            取消
+            {t('fileConflict.cancel')}
           </button>
         </div>
       </div>

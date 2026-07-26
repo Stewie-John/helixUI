@@ -476,5 +476,25 @@
       "title": "Codex MCP 정보",
       "description": "Codex는 stdio 기반 MCP 서버를 지원합니다. 추가 도구와 리소스로 Codex의 기능을 확장하는 서버를 추가할 수 있습니다."
     }
+  },
+  "customProviders": {
+    "title": "사용자 지정 Provider",
+    "description": "Anthropic API 호환 프록시(LiteLLM, OneAPI 등)를 통해 DeepSeek, Qwen, Mistral 등의 모델을 연결합니다",
+    "add": "+ 추가",
+    "edit": "편집",
+    "delete": "삭제",
+    "empty": "사용자 지정 Provider가 없습니다. \"+ 추가\"를 클릭하여 설정을 시작하세요",
+    "formTitleEdit": "Provider 편집",
+    "formTitleNew": "새 Provider",
+    "nameLabel": "이름 *",
+    "modelLabel": "기본 모델 *",
+    "baseUrlLabel": "Base URL *",
+    "baseUrlHint": "(Anthropic API 호환 프록시 주소)",
+    "descriptionLabel": "설명(선택 사항)",
+    "hideApiKey": "숨기기",
+    "showApiKey": "표시",
+    "save": "저장",
+    "cancel": "취소",
+    "usage": "<b>사용 방법:</b> Anthropic Messages API 호환 프록시가 필요합니다. <b>LiteLLM</b>(<c>litellm --model deepseek/deepseek-chat --port 4000</c>) 또는 OneAPI / NewAPI를 권장합니다. Base URL은 보통 <c>http://host:port/v1</c> 또는 <c>http://host:port</c> 형식입니다."
   }
 }
