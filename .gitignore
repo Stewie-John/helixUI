@@ -130,11 +130,11 @@ dev-debug.log
 # OS specific
 
 # Task files
-tasks.json
-tasks/
+/tasks.json
+/tasks/
 
 # Local runtime data (user sessions, image snapshots, uploads)
-data/
+/data/
 
 # Local settings overrides
 .claude/settings.local.json

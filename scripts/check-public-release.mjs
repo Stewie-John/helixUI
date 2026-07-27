@@ -59,7 +59,8 @@ function walk(directory, files = []) {
 }
 
 const violations = [];
-for (const file of walk(root)) {
+const repositoryFiles = walk(root);
+for (const file of repositoryFiles) {
   if (file.violation) {
     violations.push(`${file.relativePath}: ${file.violation}`);
     continue;
@@ -84,13 +85,23 @@ for (const file of walk(root)) {
 if (fs.existsSync(path.join(root, '.git'))) {
   try {
     const tracked = execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' });
-    for (const trackedPath of tracked.split('\n').filter(Boolean)) {
+    const trackedPaths = new Set(tracked.split('\n').filter(Boolean));
+    for (const trackedPath of trackedPaths) {
       const parts = trackedPath.split('/');
       const baseName = parts.at(-1);
       if (forbiddenDirectoryPaths.has(parts.slice(0, -1).join('/'))
           || forbiddenFileNames.has(baseName)
           || forbiddenExtensions.has(path.extname(baseName).toLowerCase())) {
         violations.push(`${trackedPath}: forbidden path is tracked by Git`);
+      }
+    }
+    for (const file of repositoryFiles) {
+      if (
+        file.absolutePath
+        && file.relativePath.startsWith('src/')
+        && !trackedPaths.has(file.relativePath)
+      ) {
+        violations.push(`${file.relativePath}: source file is not tracked by Git`);
       }
     }
   } catch (error) {

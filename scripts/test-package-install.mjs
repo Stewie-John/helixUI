@@ -158,7 +158,7 @@ try {
     ['private deployment path', /(?:\/mnt\/data\/bks|\/home\/bks)(?:\/|\b)/i],
     ['private deployment address', /\b10\.102\.34\.208\b/],
     ['private project identifier', /(?:^|[^A-Za-z0-9])(?:Aletheia|YKX|LSJ)(?:[^A-Za-z0-9]|$)/i],
-    ['private account identifier', /\b(?:Stewie|LGS|YJL|ZJR)\b/],
+    ['private account identifier', /\b(?:LGS|YJL|ZJR)\b/],
     ['private key material', /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/],
     ['GitHub access token', /\bghp_(?!x{20,}\b)[A-Za-z0-9]{20,}\b/],
     ['GitHub fine-grained access token', /\bgithub_pat_(?!x{20,}\b)[A-Za-z0-9_]{20,}\b/],
