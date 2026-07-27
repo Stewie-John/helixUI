@@ -5,6 +5,16 @@
 Security fixes are provided for the latest tagged release. Upgrade before
 reporting a vulnerability that only affects an older version.
 
+## Audited transitive exception
+
+The packaged Claude Agent SDK currently pulls `@modelcontextprotocol/sdk`,
+whose published dependency range selects `@hono/node-server` 1.x. npm reports
+[GHSA-frvp-7c67-39w9](https://github.com/advisories/GHSA-frvp-7c67-39w9)
+against that package. HelixUI does not import Hono or expose the affected
+Windows `serve-static` handler. Source installs force `@hono/node-server`
+2.0.5 or newer, and the package-install check permits only this exact,
+unreachable advisory chain; any additional advisory still fails the release.
+
 ## Deployment boundary
 
 HelixUI can execute shell commands and AI-agent tools with the permissions of

@@ -105,6 +105,7 @@ import { TtlIdempotencyCache } from './utils/ttl-idempotency.js';
 import { filterClientInstanceTargets } from './utils/client-routing.js';
 import { resolvePathWithinRoot, isSafePathSegment } from './utils/path-security.js';
 import { isAllowedRequestHost, isAllowedWebSocketOrigin } from './utils/request-origin.js';
+import { createResumableUploadHandler } from './resumable-upload.js';
 
 const VALID_PROVIDERS = ['claude', 'codex', 'cursor', 'gemini'];
 
@@ -2357,6 +2358,15 @@ app.delete('/api/projects/:projectName/files', authenticateToken, async (req, re
 
 // POST /api/projects/:projectName/files/upload - Upload files
 // Dynamic import of multer for file uploads
+const configuredMaxFileSizeMb = Number(process.env.FILE_UPLOAD_MAX_MB || 2048);
+const maxFileSizeMb = Number.isFinite(configuredMaxFileSizeMb)
+    ? Math.max(1, Math.min(configuredMaxFileSizeMb, 10240))
+    : 2048;
+const configuredMaxFiles = Number(process.env.FILE_UPLOAD_MAX_FILES || 100);
+const maxFiles = Number.isFinite(configuredMaxFiles)
+    ? Math.max(1, Math.min(Math.floor(configuredMaxFiles), 1000))
+    : 100;
+
 // 「两者都保留」改名：在扩展名前依次插入 "_2"、"_3"… 直到找到不存在的路径。
 // 无扩展名文件则在末尾追加 "_N"。文件名中一律用下划线，不使用空格。
 const findAvailableDestPath = async (destPath) => {
@@ -2377,6 +2387,138 @@ const findAvailableDestPath = async (destPath) => {
     }
     // 兜底：极端情况下用时间戳保证唯一
     return path.join(dir, `${stem}_${Date.now()}${ext}`);
+};
+
+const pathIsInside = (parent, candidate) => {
+    const relative = path.relative(parent, candidate);
+    return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+};
+
+const resolveResumableUploadDestination = async ({ metadata, size }) => {
+    const projectName = typeof metadata.projectName === 'string' ? metadata.projectName : '';
+    const targetPath = typeof metadata.targetPath === 'string' ? metadata.targetPath : '';
+    const rawRelativePath = typeof metadata.relativePath === 'string'
+        ? metadata.relativePath
+        : metadata.filename;
+    const relativePath = typeof rawRelativePath === 'string'
+        ? rawRelativePath.replaceAll('\\', '/')
+        : '';
+
+    if (!projectName || !relativePath || path.posix.isAbsolute(relativePath) || path.win32.isAbsolute(relativePath)) {
+        throw { status_code: 400, body: 'Invalid upload destination metadata' };
+    }
+    if (relativePath.split('/').some((segment) => !segment || segment === '.' || segment === '..')) {
+        throw { status_code: 400, body: 'Upload paths cannot contain empty, current, or parent segments' };
+    }
+    if (!Number.isFinite(size) || size < 0 || size > maxFileSizeMb * 1024 * 1024) {
+        throw { status_code: 413, body: `File too large. Maximum size is ${maxFileSizeMb} MB.` };
+    }
+
+    const projectRoot = await extractProjectDirectory(projectName).catch(() => null);
+    if (!projectRoot) {
+        throw { status_code: 404, body: 'Project not found' };
+    }
+    const resolvedProjectRoot = await fsPromises.realpath(projectRoot);
+    const targetValidation = await resolveFilePagePath(resolvedProjectRoot, targetPath || '.');
+    if (!targetValidation.valid || !pathIsInside(resolvedProjectRoot, targetValidation.resolved)) {
+        throw { status_code: 403, body: targetValidation.error || 'Upload target is outside the project' };
+    }
+    const targetStats = await fsPromises.stat(targetValidation.resolved).catch(() => null);
+    if (!targetStats?.isDirectory()) {
+        throw { status_code: 400, body: 'Upload target must be an existing directory' };
+    }
+
+    const destination = path.resolve(targetValidation.resolved, relativePath);
+    if (!pathIsInside(targetValidation.resolved, destination)) {
+        throw { status_code: 403, body: 'Upload path escapes the selected directory' };
+    }
+
+    return {
+        projectName,
+        projectRoot: resolvedProjectRoot,
+        targetPath,
+        relativePath,
+        destination,
+        conflictPolicy: ['replace', 'keepBoth', 'skip'].includes(metadata.conflictPolicy)
+            ? metadata.conflictPolicy
+            : 'replace',
+    };
+};
+
+const archiveReplacedUploadTarget = async (projectRoot, destination) => {
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const relative = path.relative(projectRoot, destination);
+    const archivePath = path.join(projectRoot, 'trash', stamp, 'replaced-by-upload', relative);
+    await fsPromises.mkdir(path.dirname(archivePath), { recursive: true });
+    await fsPromises.rename(destination, archivePath);
+};
+
+const validateResumableUpload = async ({ metadata, ownerId, size }) => {
+    const resolved = await resolveResumableUploadDestination({ metadata, size });
+    return {
+        projectName: resolved.projectName,
+        targetPath: resolved.targetPath,
+        relativePath: resolved.relativePath,
+        conflictPolicy: resolved.conflictPolicy,
+        ownerId: String(ownerId),
+    };
+};
+
+const finishResumableUpload = async (upload) => {
+    const sourcePath = upload.storage?.path;
+    if (!sourcePath) {
+        throw { status_code: 500, body: 'Upload storage path is unavailable' };
+    }
+
+    const completionMarker = `${sourcePath}.helix-complete.json`;
+    try {
+        const completed = JSON.parse(await fsPromises.readFile(completionMarker, 'utf8'));
+        if (completed?.path) {
+            return completed;
+        }
+    } catch {
+        // No completion marker yet.
+    }
+
+    const resolved = await resolveResumableUploadDestination({
+        metadata: upload.metadata || {},
+        size: upload.size,
+    });
+    let destination = resolved.destination;
+    let exists = false;
+    try {
+        await fsPromises.access(destination);
+        exists = true;
+    } catch {
+        // Destination is available.
+    }
+
+    if (exists && resolved.conflictPolicy === 'skip') {
+        const result = { path: destination, skipped: true };
+        await fsPromises.writeFile(completionMarker, JSON.stringify(result), { flag: 'wx' }).catch(() => {});
+        return result;
+    }
+    if (exists && resolved.conflictPolicy === 'keepBoth') {
+        destination = await findAvailableDestPath(destination);
+    } else if (exists) {
+        await archiveReplacedUploadTarget(resolved.projectRoot, destination);
+    }
+
+    await fsPromises.mkdir(path.dirname(destination), { recursive: true });
+    try {
+        // A hard link keeps the resumable source available for idempotent HEAD
+        // requests without storing a second copy on the common same-filesystem case.
+        await fsPromises.link(sourcePath, destination);
+    } catch (error) {
+        if (error.code !== 'EXDEV') {
+            throw error;
+        }
+        await fsPromises.copyFile(sourcePath, destination);
+    }
+
+    const result = { path: destination, skipped: false };
+    await fsPromises.writeFile(completionMarker, JSON.stringify(result), { flag: 'wx' }).catch(() => {});
+    return result;
 };
 
 // 上传前的重名预检：给定目标目录与各文件相对路径，返回其中已存在的文件相对路径列表。
@@ -2429,6 +2571,10 @@ const uploadFilesHandler = async (req, res) => {
     // Dynamic import of multer
     const multer = (await import('multer')).default;
 
+    // Multipart bodies stream to disk, so slow large-file uploads can safely run
+    // longer than Node's normal request timeout.
+    req.setTimeout(0);
+
     const uploadMiddleware = multer({
         storage: multer.diskStorage({
             destination: (req, file, cb) => {
@@ -2443,20 +2589,24 @@ const uploadFilesHandler = async (req, res) => {
             }
         }),
         limits: {
-            fileSize: 50 * 1024 * 1024, // 50MB limit
-            files: 20 // Max 20 files at once
+            fileSize: maxFileSizeMb * 1024 * 1024,
+            files: maxFiles
         }
     });
 
     // Use multer middleware
-    uploadMiddleware.array('files', 20)(req, res, async (err) => {
+    uploadMiddleware.array('files', maxFiles)(req, res, async (err) => {
         if (err) {
             console.error('Multer error:', err);
             if (err.code === 'LIMIT_FILE_SIZE') {
-                return res.status(400).json({ error: 'File too large. Maximum size is 50MB.' });
+                return res.status(413).json({
+                    error: `File too large. Maximum size is ${maxFileSizeMb} MB.`
+                });
             }
             if (err.code === 'LIMIT_FILE_COUNT') {
-                return res.status(400).json({ error: 'Too many files. Maximum is 20 files.' });
+                return res.status(400).json({
+                    error: `Too many files. Maximum is ${maxFiles} files per upload.`
+                });
             }
             return res.status(500).json({ error: err.message });
         }
@@ -2618,6 +2768,48 @@ const uploadFilesHandler = async (req, res) => {
 
 app.post('/api/projects/:projectName/files/check-conflicts', authenticateToken, checkUploadConflictsHandler);
 app.post('/api/projects/:projectName/files/upload', authenticateToken, uploadFilesHandler);
+
+const resumableUploadEndpoint = '/api/files/resumable';
+const resumableUploadDirectory = process.env.RESUMABLE_UPLOAD_DIR
+    || path.join(WORKSPACES_ROOT, '.helix-system', 'resumable-uploads');
+const resumableUploadHandlerPromise = createResumableUploadHandler({
+    endpoint: resumableUploadEndpoint,
+    storageDirectory: resumableUploadDirectory,
+    maxSizeBytes: maxFileSizeMb * 1024 * 1024,
+    validateUpload: validateResumableUpload,
+    finishUpload: finishResumableUpload,
+});
+
+app.all(
+    [resumableUploadEndpoint, `${resumableUploadEndpoint}/*`],
+    authenticateToken,
+    async (req, res) => {
+        if (req.method === 'DELETE') {
+            return res.status(405).json({ error: 'Uploads are retained; cancellation does not delete server data.' });
+        }
+        const internalAuthorization = `HelixOwner ${req.user.id}`;
+        req.headers.authorization = internalAuthorization;
+        let rawAuthorizationReplaced = false;
+        for (let index = 0; index < req.rawHeaders.length; index += 2) {
+            if (req.rawHeaders[index].toLowerCase() === 'authorization') {
+                req.rawHeaders[index + 1] = internalAuthorization;
+                rawAuthorizationReplaced = true;
+            }
+        }
+        if (!rawAuthorizationReplaced) {
+            req.rawHeaders.push('Authorization', internalAuthorization);
+        }
+        try {
+            const handler = await resumableUploadHandlerPromise;
+            await handler(req, res);
+        } catch (error) {
+            console.error('Resumable upload error:', error);
+            if (!res.headersSent) {
+                res.status(500).json({ error: error.message || 'Resumable upload failed' });
+            }
+        }
+    }
+);
 
 // WebSocket connection handler that routes based on URL path
 wss.on('connection', (ws, request) => {
@@ -4735,7 +4927,7 @@ async function getFileTree(dirPath, maxDepth = 3, currentDepth = 0, showHidden =
             const skipDirs = new Set([
                 'node_modules', 'dist', 'build', '.git', '.svn', '.hg',
                 '__pycache__', '.conda', '.cache', '.tox', '.eggs', '.mypy_cache',
-                '.ipynb_checkpoints', '.venv', 'venv', '.pytest_cache',
+                '.ipynb_checkpoints', '.venv', 'venv', '.pytest_cache', '.helix-system',
             ]);
             if (skipDirs.has(entry.name)) continue;
 

@@ -17,6 +17,7 @@ function run(command, args) {
 const releaseArgs = process.argv.slice(2);
 const isDryRun = releaseArgs.includes('--dry-run') || releaseArgs.includes('-d');
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const archiveRoot = path.join(projectRoot, 'trash', 'release-dry-run');
 const mutableReleaseFiles = ['package.json', 'package-lock.json', 'CHANGELOG.md'];
 const snapshots = isDryRun
   ? new Map(mutableReleaseFiles.map((file) => {
@@ -42,7 +43,12 @@ try {
   process.exitCode = error.exitCode || 1;
 } finally {
   for (const [absolutePath, content] of snapshots) {
-    if (content === null) fs.rmSync(absolutePath, { force: true });
-    else fs.writeFileSync(absolutePath, content);
+    if (content === null && fs.existsSync(absolutePath)) {
+      fs.mkdirSync(archiveRoot, { recursive: true });
+      const archivedName = `${Date.now()}-${path.basename(absolutePath)}`;
+      fs.renameSync(absolutePath, path.join(archiveRoot, archivedName));
+    } else if (content !== null) {
+      fs.writeFileSync(absolutePath, content);
+    }
   }
 }

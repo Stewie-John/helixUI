@@ -92,6 +92,7 @@ jspm_packages/
 tmp/
 temp/
 .tmp/
+/trash/
 
 # Vite
 .vite/

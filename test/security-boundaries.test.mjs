@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import test, { after } from 'node:test';
+import test from 'node:test';
 
-const temporaryRoot = await fs.mkdtemp(path.join(process.cwd(), '.security-test-'));
+const testArchiveRoot = path.join(process.cwd(), 'trash', 'test-artifacts');
+await fs.mkdir(testArchiveRoot, { recursive: true });
+const temporaryRoot = await fs.mkdtemp(path.join(testArchiveRoot, 'security-'));
 const workspaceRoot = path.join(temporaryRoot, 'workspaces');
 const outsideRoot = path.join(temporaryRoot, 'outside');
 await fs.mkdir(workspaceRoot, { recursive: true });
@@ -42,10 +44,6 @@ const runAuthentication = async (authorization) => {
   await authenticateToken(req, res, () => { nextCalled = true; });
   return { headers, statusCode, body, nextCalled };
 };
-
-after(async () => {
-  await fs.rm(temporaryRoot, { recursive: true, force: true });
-});
 
 test('workspace operations accept paths inside the configured root', async () => {
   const project = path.join(workspaceRoot, 'project-a');
@@ -141,7 +139,7 @@ test('project and session identifiers cannot carry a path', () => {
   for (const traversal of ['../../../tmp', '..', '.', 'a/b', 'a\\b', '', 'x\0y', '/etc']) {
     assert.equal(isSafePathSegment(traversal), false, `expected ${JSON.stringify(traversal)} to be rejected`);
   }
-  for (const valid of ['-mnt-data-bks-LSJ', 'project.name_1', 'a-b-c']) {
+  for (const valid of ['-workspace-root-project', 'project.name_1', 'a-b-c']) {
     assert.equal(isSafePathSegment(valid), true, `expected ${JSON.stringify(valid)} to be accepted`);
   }
 });

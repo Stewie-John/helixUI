@@ -1,7 +1,9 @@
 import { useCallback, useState, useRef } from 'react';
+import { Upload } from 'tus-js-client';
 import type { Project } from '../../../types/app';
 import type { ConflictPolicy, ConflictResolution } from '../view/FileConflictDialog';
 import { api } from '../../../utils/api';
+import { IS_PLATFORM } from '../../../constants/config';
 
 type UseFileTreeUploadOptions = {
   selectedProject: Project | null;
@@ -9,6 +11,75 @@ type UseFileTreeUploadOptions = {
   onRefresh: (targetPath?: string) => void;
   showToast: (message: string, type: 'success' | 'error') => void;
 };
+
+const RESUMABLE_UPLOAD_THRESHOLD = 50 * 1024 * 1024;
+const RESUMABLE_UPLOAD_CHUNK_SIZE = 16 * 1024 * 1024;
+
+const getCurrentAccountKey = () => {
+  const token = localStorage.getItem('auth-token');
+  if (!token) return 'platform';
+  try {
+    const encoded = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(atob(encoded));
+    return String(payload.userId || payload.username || 'account');
+  } catch {
+    return 'account';
+  }
+};
+
+const uploadResumableFile = async ({
+  file,
+  projectName,
+  targetPath,
+  relativePath,
+  conflictPolicy,
+}: {
+  file: File;
+  projectName: string;
+  targetPath: string;
+  relativePath: string;
+  conflictPolicy: ConflictPolicy;
+}) => new Promise<void>((resolve, reject) => {
+  const token = localStorage.getItem('auth-token');
+  const upload = new Upload(file, {
+    endpoint: '/api/files/resumable',
+    chunkSize: RESUMABLE_UPLOAD_CHUNK_SIZE,
+    retryDelays: [0, 1000, 3000, 5000, 10000, 30000],
+    storeFingerprintForResuming: true,
+    removeFingerprintOnSuccess: true,
+    headers: !IS_PLATFORM && token ? { Authorization: `Bearer ${token}` } : {},
+    metadata: {
+      filename: file.name.split('/').pop() || file.name,
+      projectName,
+      targetPath,
+      relativePath,
+      conflictPolicy,
+    },
+    fingerprint: async (candidate) => [
+      'helix-tus-v1',
+      getCurrentAccountKey(),
+      projectName,
+      targetPath,
+      relativePath,
+      candidate.size,
+      candidate.lastModified,
+    ].join(':'),
+    onError: reject,
+    onSuccess: () => resolve(),
+  });
+
+  upload.findPreviousUploads()
+    .then((previousUploads) => {
+      const resumable = previousUploads
+        .filter((candidate) => candidate.uploadUrl)
+        .sort((a, b) => Date.parse(b.creationTime) - Date.parse(a.creationTime))[0];
+      if (resumable) {
+        upload.resumeFromPreviousUpload(resumable);
+      }
+      upload.start();
+    })
+    .catch(reject);
+});
 
 // Helper function to read all files from a directory entry recursively
 const readAllDirectoryEntries = async (directoryEntry: FileSystemDirectoryEntry, basePath = ''): Promise<File[]> => {
@@ -118,32 +189,51 @@ export const useFileTreeUpload = ({
           console.warn('Conflict pre-check failed, falling back to replace:', checkErr);
         }
 
-        // 3) 组装 FormData 上传
-        const formData = new FormData();
-        formData.append('targetPath', targetPath);
-        files.forEach((file) => {
-          const cleanFile = new File([file], file.name.split('/').pop()!, {
-            type: file.type,
-            lastModified: file.lastModified,
+        // Large files use tus so brief disconnects resume from the server's
+        // acknowledged offset. Smaller batches retain the low-overhead multipart path.
+        const regularFiles = files.filter((file) => file.size <= RESUMABLE_UPLOAD_THRESHOLD);
+        const resumableFiles = files.filter((file) => file.size > RESUMABLE_UPLOAD_THRESHOLD);
+        let uploaded = 0;
+        let skipped = 0;
+
+        if (regularFiles.length > 0) {
+          const regularPaths = regularFiles.map((file) => file.name);
+          const formData = new FormData();
+          formData.append('targetPath', targetPath);
+          regularFiles.forEach((file) => {
+            const cleanFile = new File([file], file.name.split('/').pop()!, {
+              type: file.type,
+              lastModified: file.lastModified,
+            });
+            formData.append('files', cleanFile);
           });
-          formData.append('files', cleanFile);
-        });
-        formData.append('relativePaths', JSON.stringify(relativePaths));
-        formData.append('conflictPolicy', conflictPolicy);
+          formData.append('relativePaths', JSON.stringify(regularPaths));
+          formData.append('conflictPolicy', conflictPolicy);
 
-        const response = await api.post(
-          `/projects/${encodeURIComponent(selectedProject!.name)}/files/upload`,
-          formData,
-        );
-
-        if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.error || 'Upload failed');
+          const response = await api.post(
+            `/projects/${encodeURIComponent(selectedProject!.name)}/files/upload`,
+            formData,
+          );
+          if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Upload failed');
+          }
+          const result = await response.json().catch(() => null);
+          uploaded += result?.files?.length ?? regularFiles.length;
+          skipped += result?.skipped?.length ?? 0;
         }
 
-        const result = await response.json().catch(() => null);
-        const uploaded = result?.files?.length ?? files.length;
-        const skipped = result?.skipped?.length ?? 0;
+        for (const file of resumableFiles) {
+          await uploadResumableFile({
+            file,
+            projectName: selectedProject!.name,
+            targetPath,
+            relativePath: file.name,
+            conflictPolicy,
+          });
+          uploaded += 1;
+        }
+
         showToast(
           skipped > 0
             ? `已上传 ${uploaded} 个文件，跳过 ${skipped} 个`

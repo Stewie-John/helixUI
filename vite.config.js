@@ -48,7 +48,7 @@ export default defineConfig(({ command, mode }) => {
         output: {
           manualChunks: {
             // UI 框架核心（首屏必须）
-            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+            'vendor-react': ['react', 'react-dom', 'react-router'],
             // Markdown 渲染 + 数学公式（体积大，延迟加载）
             'vendor-markdown': [
               'react-markdown',

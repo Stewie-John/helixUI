@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // Scan production output too: minification must not hide a private constant that
 // was accidentally compiled into the browser bundle.
-const ignoredDirectories = new Set(['.git', 'node_modules', 'coverage']);
+const ignoredDirectories = new Set(['.git', 'node_modules', 'coverage', 'trash']);
 const forbiddenDirectoryPaths = new Set(['.certs', 'backups', 'data', 'logs', 'public/screenshots']);
 const forbiddenDirectoryPrefixes = ['.security-test-'];
 const forbiddenFileNames = new Set([

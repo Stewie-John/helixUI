@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import os from 'node:os';
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import {
   CodexAppServerSession,
@@ -57,24 +57,25 @@ test('the command cache remains bounded and expires stale entries', () => {
 });
 
 test('oversized JSONL records are skipped without losing later usage records', async () => {
-  const directory = await mkdtemp(path.join(os.tmpdir(), 'ccui-jsonl-'));
+  const archiveRoot = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '../trash/test-artifacts',
+  );
+  await mkdir(archiveRoot, { recursive: true });
+  const directory = await mkdtemp(path.join(archiveRoot, 'stability-jsonl-'));
   const filePath = path.join(directory, 'session.jsonl');
-  try {
-    await writeFile(filePath, [
-      JSON.stringify({ type: 'assistant', value: 1 }),
-      JSON.stringify({ type: 'tool_result', output: 'x'.repeat(4096) }),
-      JSON.stringify({ type: 'assistant', value: 2 }),
-      '',
-    ].join('\n'));
+  await writeFile(filePath, [
+    JSON.stringify({ type: 'assistant', value: 1 }),
+    JSON.stringify({ type: 'tool_result', output: 'x'.repeat(4096) }),
+    JSON.stringify({ type: 'assistant', value: 2 }),
+    '',
+  ].join('\n'));
 
-    const values = [];
-    for await (const line of readBoundedJsonlLines(filePath, 1024)) {
-      values.push(JSON.parse(line).value);
-    }
-    assert.deepEqual(values, [1, 2]);
-  } finally {
-    await rm(directory, { recursive: true, force: true });
+  const values = [];
+  for await (const line of readBoundedJsonlLines(filePath, 1024)) {
+    values.push(JSON.parse(line).value);
   }
+  assert.deepEqual(values, [1, 2]);
 });
 
 test('chat session guards are initialized before effects capture them', async () => {

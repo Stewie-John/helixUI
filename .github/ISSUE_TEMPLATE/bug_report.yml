@@ -13,7 +13,7 @@ body:
     attributes:
       label: HelixUI version
       description: The version shown in the application or package metadata.
-      placeholder: 2026.7.0
+      placeholder: 1.0.0
     validations:
       required: true
   - type: dropdown
