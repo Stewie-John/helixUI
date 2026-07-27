@@ -6,7 +6,7 @@
 </div>
 
 <p align="center">
-  <a href="https://github.com/StewartJohn0/helixui/actions/workflows/ci.yml"><img src="https://github.com/StewartJohn0/helixui/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/Stewie-John/helixUI/actions/workflows/ci.yml"><img src="https://github.com/Stewie-John/helixUI/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://www.npmjs.com/package/@stewiejohn/helixui"><img src="https://img.shields.io/npm/v/@stewiejohn/helixui" alt="npm 版本"></a>
   <a href="package.json"><img src="https://img.shields.io/badge/node-%3E%3D22-339933" alt="Node.js 22 或更高版本"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="AGPL-3.0-or-later"></a>
@@ -102,7 +102,7 @@ helix-ui
 ### 从源码安装
 
 ```bash
-git clone https://github.com/StewartJohn0/helixui.git
+git clone https://github.com/Stewie-John/helixUI.git
 cd helixui
 npm ci --include=dev
 cp .env.example .env

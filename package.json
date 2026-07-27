@@ -20,13 +20,13 @@
     "README.zh-CN.md",
     "docs/assets/"
   ],
-  "homepage": "https://github.com/StewartJohn0/helixui",
+  "homepage": "https://github.com/Stewie-John/helixUI",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/StewartJohn0/helixui.git"
+    "url": "git+https://github.com/Stewie-John/helixUI.git"
   },
   "bugs": {
-    "url": "https://github.com/StewartJohn0/helixui/issues"
+    "url": "https://github.com/Stewie-John/helixUI/issues"
   },
   "publishConfig": {
     "access": "public",

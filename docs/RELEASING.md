@@ -25,7 +25,7 @@ the production client, packs and installs the package in a clean temporary
 home, starts that installed server to verify runtime path isolation, and audits
 the dependency tree that consumers actually receive.
 
-The local public worktree uses `https://github.com/StewartJohn0/helixui.git` as
+The local public worktree uses `https://github.com/Stewie-John/helixUI.git` as
 `origin`. Change that remote before publishing a fork under another account.
 
 Tags use `vMAJOR.MINOR.PATCH`. Git tags and GitHub releases are the immutable version

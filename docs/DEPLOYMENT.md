@@ -3,7 +3,7 @@
 ## Local installation
 
 ```bash
-git clone https://github.com/StewartJohn0/helixui.git
+git clone https://github.com/Stewie-John/helixUI.git
 cd helixui
 npm ci --include=dev
 cp .env.example .env

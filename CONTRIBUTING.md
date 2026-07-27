@@ -4,7 +4,7 @@ Thanks for contributing to HelixUI. Please read this guide before starting.
 
 ## Before You Start
 
-- **Search first.** Check [existing issues](https://github.com/StewartJohn0/helixui/issues) and pull requests to avoid duplicating work.
+- **Search first.** Check [existing issues](https://github.com/Stewie-John/helixUI/issues) and pull requests to avoid duplicating work.
 - **Discuss first** for large features or protocol changes.
 - **Bug fixes are always welcome.** If you spot a bug, feel free to open a PR directly.
 
