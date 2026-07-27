@@ -49,11 +49,20 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           package_name="$(node -p "require('./package.json').name")"
-          if npm view "$package_name@$RELEASE_VERSION" version --json >/dev/null 2>&1; then
+          set +e
+          lookup_output="$(npm view "$package_name@$RELEASE_VERSION" version --json 2>&1)"
+          lookup_status=$?
+          set -e
+          if [ "$lookup_status" -eq 0 ]; then
             echo "publish=false" >> "$GITHUB_OUTPUT"
             echo "$package_name@$RELEASE_VERSION already exists; recovering Git metadata only."
-          else
+          elif printf '%s\n' "$lookup_output" | grep -Eq 'E404|404 Not Found'; then
             echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "$package_name@$RELEASE_VERSION is not published yet."
+          else
+            printf '%s\n' "$lookup_output" >&2
+            echo "Unable to verify npm publication state; refusing to publish." >&2
+            exit "$lookup_status"
           fi
       - name: Create tag, GitHub release, and npm package
         run: npx release-it "${{ inputs.version }}" --ci --npm.publish=${{ steps.npm-version.outputs.publish }}
